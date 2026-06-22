@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { COMPONENT_REGISTRY } from './ComponentRegistry'
 import type { ComponentItem } from './ComponentRegistry'
 import {
@@ -17,8 +17,196 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
+function MathWaveLoaderPreview({ props }: { props: Record<string, any> }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  
+  const curveType = props.curveType || 'rose'
+  const theme = props.theme || 'purple-indigo'
+  const k = Number(props.k ?? 5)
+  const freqA = Number(props.freqA ?? 3)
+  const freqB = Number(props.freqB ?? 4)
+  const speed = Number(props.speed ?? 2.0)
+  const breathScale = Number(props.breath ?? 15) / 100
+  const trailLength = Number(props.trailLength ?? 80)
+  const strokeWidth = Number(props.strokeWidth ?? 2.5)
+  const glowSize = Number(props.glowSize ?? 12)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animationFrameId: number
+    let t = 0
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = canvas.clientWidth * dpr
+      canvas.height = canvas.clientHeight * dpr
+      ctx.scale(dpr, dpr)
+    }
+
+    resize()
+    const resizeObserver = new ResizeObserver(() => {
+      resize()
+    })
+    resizeObserver.observe(canvas)
+
+    const getThemeColors = (themeStr: string, opacity: number, theta = 0, time = 0) => {
+      switch (themeStr) {
+        case 'purple-indigo':
+          return { line: `rgba(167, 139, 250, ${opacity})`, glow: `rgba(99, 102, 241, ${opacity})` }
+        case 'cyan-blue':
+          return { line: `rgba(34, 211, 238, ${opacity})`, glow: `rgba(37, 99, 235, ${opacity})` }
+        case 'emerald-teal':
+          return { line: `rgba(52, 211, 153, ${opacity})`, glow: `rgba(13, 148, 136, ${opacity})` }
+        case 'rose-amber':
+          return { line: `rgba(244, 63, 94, ${opacity})`, glow: `rgba(245, 158, 11, ${opacity})` }
+        case 'rainbow': {
+          const hue = Math.round(((theta * 180) / Math.PI + time * 0.8) % 360)
+          return { line: `hsla(${hue}, 100%, 65%, ${opacity})`, glow: `hsla(${hue}, 100%, 50%, ${opacity})` }
+        }
+        default:
+          return { line: `rgba(167, 139, 250, ${opacity})`, glow: `rgba(99, 102, 241, ${opacity})` }
+      }
+    }
+
+    const getPoint = (theta: number, time: number, size: number) => {
+      const breath = 1.0 + breathScale * Math.sin(time * 0.05)
+      let x = 0
+      let y = 0
+
+      if (curveType === 'rose') {
+        const radius = Math.cos(k * theta) * breath
+        x = radius * Math.cos(theta)
+        y = radius * Math.sin(theta)
+      } else if (curveType === 'lissajous') {
+        x = Math.sin(freqA * theta + time * 0.03) * breath
+        y = Math.sin(freqB * theta) * breath
+      } else if (curveType === 'lemniscate') {
+        const denom = 1 + Math.sin(theta) * Math.sin(theta)
+        x = (Math.cos(theta) / denom) * 1.2 * breath
+        y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath
+      } else if (curveType === 'hypotrochoid') {
+        const r_inner = 0.55 - 0.02 * k
+        const d_dist = 0.45
+        x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath
+        y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath
+      } else { // spiral
+        const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath
+        const r = base_r + 0.3 * Math.cos(k * theta)
+        x = r * Math.cos(theta)
+        y = r * Math.sin(theta)
+      }
+
+      return {
+        x: x * (size * 0.4),
+        y: y * (size * 0.4)
+      }
+    }
+
+    const draw = () => {
+      const width = canvas.width / (window.devicePixelRatio || 1)
+      const height = canvas.height / (window.devicePixelRatio || 1)
+      ctx.clearRect(0, 0, width, height)
+
+      const size = Math.min(width, height)
+      const cx = width / 2
+      const cy = height / 2
+
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+
+      // 1. Draw background trace outline
+      ctx.beginPath()
+      const traceSteps = 300
+      for (let i = 0; i <= traceSteps; i++) {
+        const theta = (i / traceSteps) * Math.PI * 2
+        const pt = getPoint(theta, t, size)
+        if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y)
+        else ctx.lineTo(cx + pt.x, cy + pt.y)
+      }
+      ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.06)' : getThemeColors(theme, 0.08).glow
+      ctx.lineWidth = 1
+      ctx.stroke()
+
+      // 2. Draw glowing comet trail
+      const headTheta = t * 0.02 * speed
+      const trailRad = (trailLength / 100) * Math.PI
+
+      const layers = [
+        { width: strokeWidth + glowSize, opacityScale: 0.15 },
+        { width: strokeWidth + glowSize / 2, opacityScale: 0.4 },
+        { width: strokeWidth, opacityScale: 1.0 }
+      ]
+
+      layers.forEach(({ width: w, opacityScale }) => {
+        ctx.lineWidth = w
+        for (let i = 1; i <= 50; i++) {
+          const ratio = i / 50
+          const thetaStart = headTheta - trailRad * (1 - (i - 1) / 50)
+          const thetaEnd = headTheta - trailRad * (1 - ratio)
+
+          const pt1 = getPoint(thetaStart, t, size)
+          const pt2 = getPoint(thetaEnd, t, size)
+
+          ctx.beginPath()
+          ctx.moveTo(cx + pt1.x, cy + pt1.y)
+          ctx.lineTo(cx + pt2.x, cy + pt2.y)
+
+          const op = ratio * opacityScale
+          const colors = getThemeColors(theme, op, thetaEnd, t)
+          ctx.strokeStyle = colors.line
+          ctx.stroke()
+        }
+      })
+
+      // 3. Head glowing dot
+      const headPt = getPoint(headTheta, t, size)
+      const colors = getThemeColors(theme, 1.0, headTheta, t)
+
+      const glowGrad = ctx.createRadialGradient(
+        cx + headPt.x, cy + headPt.y, 0,
+        cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2
+      )
+      glowGrad.addColorStop(0, colors.line)
+      glowGrad.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = glowGrad
+      ctx.beginPath()
+      ctx.arc(cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.arc(cx + headPt.x, cy + headPt.y, Math.max(1.5, strokeWidth * 0.6), 0, Math.PI * 2)
+      ctx.fill()
+
+      t += 1
+      animationFrameId = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    return () => {
+      resizeObserver.disconnect()
+      cancelAnimationFrame(animationFrameId)
+    }
+  }, [curveType, theme, k, freqA, freqB, speed, breathScale, trailLength, strokeWidth, glowSize])
+
+  return (
+    <div className="w-full h-full flex items-center justify-center p-2">
+      <canvas ref={canvasRef} className="w-full h-full max-w-[240px] max-h-[240px] block" />
+    </div>
+  )
+}
+
 // Dynamic component preview renderer to display selected states
 function LivePreviewRenderer({ item, props }: { item: ComponentItem; props: Record<string, any> }) {
+  if (item.id === 'math-wave-loader') {
+    return <MathWaveLoaderPreview props={props} />
+  }
+
   if (item.id === 'gradient-glow-btn') {
     const { text, colorTheme, rounded, size } = props
     let themeBg = 'from-violet-600 to-indigo-600 group-hover:from-violet-500 group-hover:to-indigo-500'

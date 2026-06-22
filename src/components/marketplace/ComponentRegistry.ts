@@ -833,5 +833,401 @@ export default function CyberSkeleton() {
 </style>`
       }
     }
+  },
+  {
+    id: 'math-wave-loader',
+    name: 'Mathematical Wave Loader',
+    description: 'An organic, high-performance loading animation tracing mathematical equations (Rose curve, Lissajous, Lemniscate, Spirograph) with custom neon glows.',
+    category: 'feedback',
+    props: [
+      { id: 'curveType', name: 'Curve Wave Equation', type: 'select', default: 'rose', options: ['rose', 'lissajous', 'lemniscate', 'hypotrochoid', 'spiral'] },
+      { id: 'theme', name: 'Glow Hue Theme', type: 'select', default: 'purple-indigo', options: ['purple-indigo', 'cyan-blue', 'emerald-teal', 'rose-amber', 'rainbow'] },
+      { id: 'k', name: 'Petals / Multiplier (k)', type: 'number', default: 5, min: 1, max: 12, step: 1 },
+      { id: 'freqA', name: 'Lissajous Frequency A', type: 'number', default: 3, min: 1, max: 10, step: 1 },
+      { id: 'freqB', name: 'Lissajous Frequency B', type: 'number', default: 4, min: 1, max: 10, step: 1 },
+      { id: 'speed', name: 'Trace Speed multiplier', type: 'number', default: 2.0, min: 0.5, max: 5.0, step: 0.1 },
+      { id: 'breath', name: 'Pulse breathing size (%)', type: 'number', default: 15, min: 0, max: 40, step: 1 },
+      { id: 'trailLength', name: 'Trail Length (%)', type: 'number', default: 80, min: 20, max: 200, step: 5 },
+      { id: 'strokeWidth', name: 'Core Line Width', type: 'number', default: 2.5, min: 1.0, max: 5.0, step: 0.5 },
+      { id: 'glowSize', name: 'Neon Glow Size', type: 'number', default: 12, min: 0, max: 25, step: 1 }
+    ],
+    generateCode: (props) => {
+      const { curveType, theme, k, freqA, freqB, speed, breath, trailLength, strokeWidth, glowSize } = props
+      
+      const themeColorsJS = `const getThemeColors = (theme, opacity, theta = 0, t = 0) => {
+    switch (theme) {
+      case 'purple-indigo':
+        return { line: \`rgba(167, 139, 250, \${opacity})\`, glow: \`rgba(99, 102, 241, \${opacity})\` };
+      case 'cyan-blue':
+        return { line: \`rgba(34, 211, 238, \${opacity})\`, glow: \`rgba(37, 99, 235, \${opacity})\` };
+      case 'emerald-teal':
+        return { line: \`rgba(52, 211, 153, \${opacity})\`, glow: \`rgba(13, 148, 136, \${opacity})\` };
+      case 'rose-amber':
+        return { line: \`rgba(244, 63, 94, \${opacity})\`, glow: \`rgba(245, 158, 11, \${opacity})\` };
+      case 'rainbow': {
+        const hue = Math.round(((theta * 180) / Math.PI + t * 0.8) % 360);
+        return { line: \`hsla(\${hue}, 100%, 65%, \${opacity})\`, glow: \`hsla(\${hue}, 100%, 50%, \${opacity})\` };
+      }
+      default:
+        return { line: \`rgba(167, 139, 250, \${opacity})\`, glow: \`rgba(99, 102, 241, \${opacity})\` };
+    }
+  };`
+
+      return {
+        tailwind: `import React, { useEffect, useRef } from 'react';
+
+export default function MathWaveLoader() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId;
+    let t = 0;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvas.clientWidth * dpr;
+      canvas.height = canvas.clientHeight * dpr;
+      ctx.scale(dpr, dpr);
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Configuration
+    const curveType = '${curveType}';
+    const k = ${k};
+    const freqA = ${freqA};
+    const freqB = ${freqB};
+    const speed = ${speed};
+    const breathScale = ${breath / 100};
+    const trailLength = ${trailLength};
+    const strokeWidth = ${strokeWidth};
+    const glowSize = ${glowSize};
+    const theme = '${theme}';
+
+    ${themeColorsJS.replace(/\n/g, '\n    ')}
+
+    const getPoint = (theta, time, size) => {
+      const breath = 1.0 + breathScale * Math.sin(time * 0.05);
+      let x = 0;
+      let y = 0;
+
+      if (curveType === 'rose') {
+        const radius = Math.cos(k * theta) * breath;
+        x = radius * Math.cos(theta);
+        y = radius * Math.sin(theta);
+      } else if (curveType === 'lissajous') {
+        x = Math.sin(freqA * theta + time * 0.03) * breath;
+        y = Math.sin(freqB * theta) * breath;
+      } else if (curveType === 'lemniscate') {
+        const denom = 1 + Math.sin(theta) * Math.sin(theta);
+        x = (Math.cos(theta) / denom) * 1.2 * breath;
+        y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath;
+      } else if (curveType === 'hypotrochoid') {
+        const r_inner = 0.55 - 0.02 * k;
+        const d_dist = 0.45;
+        x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath;
+        y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath;
+      } else { // spiral
+        const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath;
+        const r = base_r + 0.3 * Math.cos(k * theta);
+        x = r * Math.cos(theta);
+        y = r * Math.sin(theta);
+      }
+
+      return {
+        x: x * (size * 0.4),
+        y: y * (size * 0.4)
+      };
+    };
+
+    const draw = () => {
+      const width = canvas.width / (window.devicePixelRatio || 1);
+      const height = canvas.height / (window.devicePixelRatio || 1);
+      ctx.clearRect(0, 0, width, height);
+
+      const size = Math.min(width, height);
+      const cx = width / 2;
+      const cy = height / 2;
+
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // 1. Draw background trace outline
+      ctx.beginPath();
+      const traceSteps = 300;
+      for (let i = 0; i <= traceSteps; i++) {
+        const theta = (i / traceSteps) * Math.PI * 2;
+        const pt = getPoint(theta, t, size);
+        if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y);
+        else ctx.lineTo(cx + pt.x, cy + pt.y);
+      }
+      ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.06)' : getThemeColors(theme, 0.08).glow;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // 2. Draw glowing comet trail
+      const headTheta = t * 0.02 * speed;
+      const trailRad = (trailLength / 100) * Math.PI;
+
+      const layers = [
+        { width: strokeWidth + glowSize, opacityScale: 0.15 },
+        { width: strokeWidth + glowSize / 2, opacityScale: 0.4 },
+        { width: strokeWidth, opacityScale: 1.0 }
+      ];
+
+      layers.forEach(({ width: w, opacityScale }) => {
+        ctx.lineWidth = w;
+        for (let i = 1; i <= 50; i++) {
+          const ratio = i / 50;
+          const thetaStart = headTheta - trailRad * (1 - (i - 1) / 50);
+          const thetaEnd = headTheta - trailRad * (1 - ratio);
+
+          const pt1 = getPoint(thetaStart, t, size);
+          const pt2 = getPoint(thetaEnd, t, size);
+
+          ctx.beginPath();
+          ctx.moveTo(cx + pt1.x, cy + pt1.y);
+          ctx.lineTo(cx + pt2.x, cy + pt2.y);
+
+          const op = ratio * opacityScale;
+          const colors = getThemeColors(theme, op, thetaEnd, t);
+          ctx.strokeStyle = colors.line;
+          ctx.stroke();
+        }
+      });
+
+      // 3. Head glowing dot
+      const headPt = getPoint(headTheta, t, size);
+      const colors = getThemeColors(theme, 1.0, headTheta, t);
+
+      const glowGrad = ctx.createRadialGradient(
+        cx + headPt.x, cy + headPt.y, 0,
+        cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2
+      );
+      glowGrad.addColorStop(0, colors.line);
+      glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx + headPt.x, cy + headPt.y, Math.max(1.5, strokeWidth * 0.6), 0, Math.PI * 2);
+      ctx.fill();
+
+      t += 1;
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return (
+    <div className="flex items-center justify-center w-full aspect-square max-w-[320px] mx-auto rounded-2xl bg-zinc-950/40 border border-zinc-900 shadow-inner p-6">
+      <canvas ref={canvasRef} className="w-full h-full" />
+    </div>
+  );
+}`,
+        css: `<!-- HTML Structure -->
+<div class="loader-card">
+  <canvas id="math-loader-canvas" class="loader-canvas"></canvas>
+</div>
+
+<!-- CSS Styling -->
+<style>
+.loader-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  border-radius: 16px;
+  background-color: rgba(9, 9, 11, 0.4);
+  border: 1px solid #18181b;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.loader-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+</style>
+
+<!-- Vanilla JS Math Tracing Logic -->
+<script>
+(function() {
+  const canvas = document.getElementById('math-loader-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  let animationFrameId;
+  let t = 0;
+
+  const resize = () => {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.clientWidth * dpr;
+    canvas.height = canvas.clientHeight * dpr;
+    ctx.scale(dpr, dpr);
+  };
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Configuration
+  const curveType = '${curveType}';
+  const k = ${k};
+  const freqA = ${freqA};
+  const freqB = ${freqB};
+  const speed = ${speed};
+  const breathScale = ${breath / 100};
+  const trailLength = ${trailLength};
+  const strokeWidth = ${strokeWidth};
+  const glowSize = ${glowSize};
+  const theme = '${theme}';
+
+  ${themeColorsJS.replace(/\n/g, '\n  ')}
+
+  const getPoint = (theta, time, size) => {
+    const breath = 1.0 + breathScale * Math.sin(time * 0.05);
+    let x = 0;
+    let y = 0;
+
+    if (curveType === 'rose') {
+      const radius = Math.cos(k * theta) * breath;
+      x = radius * Math.cos(theta);
+      y = radius * Math.sin(theta);
+    } else if (curveType === 'lissajous') {
+      x = Math.sin(freqA * theta + time * 0.03) * breath;
+      y = Math.sin(freqB * theta) * breath;
+    } else if (curveType === 'lemniscate') {
+      const denom = 1 + Math.sin(theta) * Math.sin(theta);
+      x = (Math.cos(theta) / denom) * 1.2 * breath;
+      y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath;
+    } else if (curveType === 'hypotrochoid') {
+      const r_inner = 0.55 - 0.02 * k;
+      const d_dist = 0.45;
+      x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath;
+      y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath;
+    } else { // spiral
+      const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath;
+      const r = base_r + 0.3 * Math.cos(k * theta);
+      x = r * Math.cos(theta);
+      y = r * Math.sin(theta);
+    }
+
+    return {
+      x: x * (size * 0.4),
+      y: y * (size * 0.4)
+    };
+  };
+
+  const draw = () => {
+    const width = canvas.width / (window.devicePixelRatio || 1);
+    const height = canvas.height / (window.devicePixelRatio || 1);
+    ctx.clearRect(0, 0, width, height);
+
+    const size = Math.min(width, height);
+    const cx = width / 2;
+    const cy = height / 2;
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // 1. Trace Outline
+    ctx.beginPath();
+    const traceSteps = 300;
+    for (let i = 0; i <= traceSteps; i++) {
+      const theta = (i / traceSteps) * Math.PI * 2;
+      const pt = getPoint(theta, t, size);
+      if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y);
+      else ctx.lineTo(cx + pt.x, cy + pt.y);
+    }
+    ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.06)' : getThemeColors(theme, 0.08).glow;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // 2. Glowing trail
+    const headTheta = t * 0.02 * speed;
+    const trailRad = (trailLength / 100) * Math.PI;
+
+    const layers = [
+      { width: strokeWidth + glowSize, opacityScale: 0.15 },
+      { width: strokeWidth + glowSize / 2, opacityScale: 0.4 },
+      { width: strokeWidth, opacityScale: 1.0 }
+    ];
+
+    layers.forEach(({ width: w, opacityScale }) => {
+      ctx.lineWidth = w;
+      for (let i = 1; i <= 50; i++) {
+        const ratio = i / 50;
+        const thetaStart = headTheta - trailRad * (1 - (i - 1) / 50);
+        const thetaEnd = headTheta - trailRad * (1 - ratio);
+
+        const pt1 = getPoint(thetaStart, t, size);
+        const pt2 = getPoint(thetaEnd, t, size);
+
+        ctx.beginPath();
+        ctx.moveTo(cx + pt1.x, cy + pt1.y);
+        ctx.lineTo(cx + pt2.x, cy + pt2.y);
+
+        const op = ratio * opacityScale;
+        const colors = getThemeColors(theme, op, thetaEnd, t);
+        ctx.strokeStyle = colors.line;
+        ctx.stroke();
+      }
+    });
+
+    // 3. Glow dot
+    const headPt = getPoint(headTheta, t, size);
+    const colors = getThemeColors(theme, 1.0, headTheta, t);
+
+    const glowGrad = ctx.createRadialGradient(
+      cx + headPt.x, cy + headPt.y, 0,
+      cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2
+    );
+    glowGrad.addColorStop(0, colors.line);
+    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glowGrad;
+    ctx.beginPath();
+    ctx.arc(cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx + headPt.x, cy + headPt.y, Math.max(1.5, strokeWidth * 0.6), 0, Math.PI * 2);
+    ctx.fill();
+
+    t += 1;
+    animationFrameId = requestAnimationFrame(draw);
+  };
+
+  draw();
+
+  window.addEventListener('beforeunload', () => {
+    window.removeEventListener('resize', resize);
+    cancelAnimationFrame(animationFrameId);
+  });
+})();
+</script>`
+      }
+    }
   }
 ]
