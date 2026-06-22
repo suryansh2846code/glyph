@@ -835,16 +835,14 @@ export default function CyberSkeleton() {
     }
   },
   {
-    id: 'math-wave-loader',
-    name: 'Mathematical Wave Loader',
-    description: 'An organic, high-performance loading animation tracing mathematical equations (Rose curve, Lissajous, Lemniscate, Spirograph) with custom neon glows.',
+    id: 'math-curve-pack',
+    name: 'Mathematical Curve Loader Pack',
+    description: 'A showcase of 10 organic, high-performance mathematical loaders (Rose curves, Lissajous, Lemniscate, Spirographs, and Cosine Rings) animating in a unified grid.',
     category: 'feedback',
     props: [
-      { id: 'curveType', name: 'Curve Wave Equation', type: 'select', default: 'rose', options: ['rose', 'lissajous', 'lemniscate', 'hypotrochoid', 'spiral'] },
+      { id: 'renderStyle', name: 'Render Styling', type: 'select', default: 'glow', options: ['glow', 'dotted', 'halftone', 'minimalist'] },
       { id: 'theme', name: 'Glow Hue Theme', type: 'select', default: 'purple-indigo', options: ['purple-indigo', 'cyan-blue', 'emerald-teal', 'rose-amber', 'rainbow'] },
-      { id: 'k', name: 'Petals / Multiplier (k)', type: 'number', default: 5, min: 1, max: 12, step: 1 },
-      { id: 'freqA', name: 'Lissajous Frequency A', type: 'number', default: 3, min: 1, max: 10, step: 1 },
-      { id: 'freqB', name: 'Lissajous Frequency B', type: 'number', default: 4, min: 1, max: 10, step: 1 },
+      { id: 'exportCurve', name: 'Select Loader to Export', type: 'select', default: 'rose-curve', options: ['original-thinking', 'thinking-five', 'rose-curve', 'rose-two', 'rose-four', 'lissajous', 'lemniscate', 'spirograph', 'spiral'] },
       { id: 'speed', name: 'Trace Speed multiplier', type: 'number', default: 2.0, min: 0.5, max: 5.0, step: 0.1 },
       { id: 'breath', name: 'Pulse breathing size (%)', type: 'number', default: 15, min: 0, max: 40, step: 1 },
       { id: 'trailLength', name: 'Trail Length (%)', type: 'number', default: 80, min: 20, max: 200, step: 5 },
@@ -852,7 +850,7 @@ export default function CyberSkeleton() {
       { id: 'glowSize', name: 'Neon Glow Size', type: 'number', default: 12, min: 0, max: 25, step: 1 }
     ],
     generateCode: (props) => {
-      const { curveType, theme, k, freqA, freqB, speed, breath, trailLength, strokeWidth, glowSize } = props
+      const { renderStyle, theme, exportCurve, speed, breath, trailLength, strokeWidth, glowSize } = props
       
       const themeColorsJS = `const getThemeColors = (theme, opacity, theta = 0, t = 0) => {
     switch (theme) {
@@ -872,6 +870,146 @@ export default function CyberSkeleton() {
         return { line: \`rgba(167, 139, 250, \${opacity})\`, glow: \`rgba(99, 102, 241, \${opacity})\` };
     }
   };`
+
+      let curveFormulaJS = ''
+      if (exportCurve === 'original-thinking') {
+        curveFormulaJS = `const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath;
+      x = radius * Math.cos(theta + time * 0.015);
+      y = radius * Math.sin(theta + time * 0.015);`
+      } else if (exportCurve === 'thinking-five') {
+        curveFormulaJS = `const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath;
+      x = radius * Math.cos(theta - time * 0.012);
+      y = radius * Math.sin(theta - time * 0.012);`
+      } else if (exportCurve === 'rose-curve') {
+        curveFormulaJS = `const radius = Math.cos(5 * theta) * breath;
+      x = radius * Math.cos(theta);
+      y = radius * Math.sin(theta);`
+      } else if (exportCurve === 'rose-two') {
+        curveFormulaJS = `const radius = Math.cos(2 * theta) * breath;
+      x = radius * Math.cos(theta);
+      y = radius * Math.sin(theta);`
+      } else if (exportCurve === 'rose-four') {
+        curveFormulaJS = `const radius = Math.cos(4 * theta) * breath;
+      x = radius * Math.cos(theta);
+      y = radius * Math.sin(theta);`
+      } else if (exportCurve === 'lissajous') {
+        curveFormulaJS = `x = Math.sin(3 * theta + time * 0.03) * breath;
+      y = Math.sin(4 * theta) * breath;`
+      } else if (exportCurve === 'lemniscate') {
+        curveFormulaJS = `const denom = 1 + Math.sin(theta) * Math.sin(theta);
+      x = (Math.cos(theta) / denom) * 1.2 * breath;
+      y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath;`
+      } else if (exportCurve === 'spirograph') {
+        curveFormulaJS = `const r_inner = 0.45;
+      const d_dist = 0.38;
+      x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath;
+      y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath;`
+      } else {
+        curveFormulaJS = `const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath;
+      const r = base_r + 0.3 * Math.cos(3 * theta);
+      x = r * Math.cos(theta);
+      y = r * Math.sin(theta);`
+      }
+
+      let renderLogicJS = ''
+      if (renderStyle === 'glow') {
+        renderLogicJS = `const layers = [
+        { width: strokeWidth + glowSize, opacityScale: 0.15 },
+        { width: strokeWidth + glowSize / 2, opacityScale: 0.4 },
+        { width: strokeWidth, opacityScale: 1.0 }
+      ];
+
+      layers.forEach(({ width: w, opacityScale }) => {
+        ctx.lineWidth = w;
+        for (let i = 1; i <= 50; i++) {
+          const ratio = i / 50;
+          const thetaStart = headTheta - trailRad * (1 - (i - 1) / 50);
+          const thetaEnd = headTheta - trailRad * (1 - ratio);
+
+          const pt1 = getPoint(thetaStart, t, size);
+          const pt2 = getPoint(thetaEnd, t, size);
+
+          ctx.beginPath();
+          ctx.moveTo(cx + pt1.x, cy + pt1.y);
+          ctx.lineTo(cx + pt2.x, cy + pt2.y);
+
+          const op = ratio * opacityScale;
+          const colors = getThemeColors(theme, op, thetaEnd, t);
+          ctx.strokeStyle = colors.line;
+          ctx.stroke();
+        }
+      });`
+      } else if (renderStyle === 'dotted') {
+        renderLogicJS = `for (let i = 1; i <= 60; i++) {
+        const ratio = i / 60;
+        const theta = headTheta - trailRad * (1 - ratio);
+        const pt = getPoint(theta, t, size);
+
+        const colors = getThemeColors(theme, ratio, theta, t);
+        
+        ctx.fillStyle = theme === 'rainbow' ? colors.glow : getThemeColors(theme, ratio * 0.3, theta, t).glow;
+        ctx.beginPath();
+        ctx.arc(cx + pt.x, cy + pt.y, strokeWidth * ratio + glowSize * 0.3 * ratio, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = colors.line;
+        ctx.beginPath();
+        ctx.arc(cx + pt.x, cy + pt.y, strokeWidth * 0.7 * ratio, 0, Math.PI * 2);
+        ctx.fill();
+      }`
+      } else if (renderStyle === 'halftone') {
+        renderLogicJS = `for (let i = 1; i <= 70; i++) {
+        const ratio = i / 70;
+        const theta = headTheta - trailRad * (1 - ratio);
+        const pt = getPoint(theta, t, size);
+
+        const mod = 0.4 + 0.6 * Math.sin(theta * 6.0);
+        const rad = strokeWidth * 1.8 * ratio * Math.abs(mod);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(cx + pt.x, cy + pt.y, Math.max(0.5, rad), 0, Math.PI * 2);
+        ctx.fill();
+      }`
+      } else {
+        renderLogicJS = `ctx.lineWidth = strokeWidth * 0.5;
+      for (let i = 1; i <= 80; i++) {
+        const ratio = i / 80;
+        const thetaStart = headTheta - trailRad * (1 - (i - 1) / 80);
+        const thetaEnd = headTheta - trailRad * (1 - ratio);
+
+        const pt1 = getPoint(thetaStart, t, size);
+        const pt2 = getPoint(thetaEnd, t, size);
+
+        ctx.beginPath();
+        ctx.moveTo(cx + pt1.x, cy + pt1.y);
+        ctx.lineTo(cx + pt2.x, cy + pt2.y);
+
+        const op = ratio * 0.8;
+        const colors = getThemeColors(theme, op, thetaEnd, t);
+        ctx.strokeStyle = theme === 'rainbow' ? colors.line : \`rgba(255, 255, 255, \${op})\`;
+        ctx.stroke();
+      }`
+      }
+
+      const drawHeadNodeJS = renderStyle !== 'halftone' ? `const headPt = getPoint(headTheta, t, size);
+      const colors = getThemeColors(theme, 1.0, headTheta, t);
+
+      const glowGrad = ctx.createRadialGradient(
+        cx + headPt.x, cy + headPt.y, 0,
+        cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2
+      );
+      glowGrad.addColorStop(0, colors.line);
+      glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx + headPt.x, cy + headPt.y, Math.max(1.5, strokeWidth * 0.6), 0, Math.PI * 2);
+      ctx.fill();` : ''
 
       return {
         tailwind: `import React, { useEffect, useRef } from 'react';
@@ -898,11 +1036,6 @@ export default function MathWaveLoader() {
     resize();
     window.addEventListener('resize', resize);
 
-    // Configuration
-    const curveType = '${curveType}';
-    const k = ${k};
-    const freqA = ${freqA};
-    const freqB = ${freqB};
     const speed = ${speed};
     const breathScale = ${breath / 100};
     const trailLength = ${trailLength};
@@ -917,28 +1050,7 @@ export default function MathWaveLoader() {
       let x = 0;
       let y = 0;
 
-      if (curveType === 'rose') {
-        const radius = Math.cos(k * theta) * breath;
-        x = radius * Math.cos(theta);
-        y = radius * Math.sin(theta);
-      } else if (curveType === 'lissajous') {
-        x = Math.sin(freqA * theta + time * 0.03) * breath;
-        y = Math.sin(freqB * theta) * breath;
-      } else if (curveType === 'lemniscate') {
-        const denom = 1 + Math.sin(theta) * Math.sin(theta);
-        x = (Math.cos(theta) / denom) * 1.2 * breath;
-        y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath;
-      } else if (curveType === 'hypotrochoid') {
-        const r_inner = 0.55 - 0.02 * k;
-        const d_dist = 0.45;
-        x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath;
-        y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath;
-      } else { // spiral
-        const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath;
-        const r = base_r + 0.3 * Math.cos(k * theta);
-        x = r * Math.cos(theta);
-        y = r * Math.sin(theta);
-      }
+      ${curveFormulaJS.replace(/\n/g, '\n      ')}
 
       return {
         x: x * (size * 0.4),
@@ -951,6 +1063,11 @@ export default function MathWaveLoader() {
       const height = canvas.height / (window.devicePixelRatio || 1);
       ctx.clearRect(0, 0, width, height);
 
+      if ('${renderStyle}' === 'halftone') {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+      }
+
       const size = Math.min(width, height);
       const cx = width / 2;
       const cy = height / 2;
@@ -958,69 +1075,26 @@ export default function MathWaveLoader() {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // 1. Draw background trace outline
-      ctx.beginPath();
-      const traceSteps = 300;
-      for (let i = 0; i <= traceSteps; i++) {
-        const theta = (i / traceSteps) * Math.PI * 2;
-        const pt = getPoint(theta, t, size);
-        if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y);
-        else ctx.lineTo(cx + pt.x, cy + pt.y);
+      if ('${renderStyle}' !== 'halftone') {
+        ctx.beginPath();
+        const traceSteps = 300;
+        for (let i = 0; i <= traceSteps; i++) {
+          const theta = (i / traceSteps) * Math.PI * 2;
+          const pt = getPoint(theta, t, size);
+          if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y);
+          else ctx.lineTo(cx + pt.x, cy + pt.y);
+        }
+        ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.06)' : getThemeColors(theme, 0.08).glow;
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
-      ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.06)' : getThemeColors(theme, 0.08).glow;
-      ctx.lineWidth = 1;
-      ctx.stroke();
 
-      // 2. Draw glowing comet trail
       const headTheta = t * 0.02 * speed;
       const trailRad = (trailLength / 100) * Math.PI;
 
-      const layers = [
-        { width: strokeWidth + glowSize, opacityScale: 0.15 },
-        { width: strokeWidth + glowSize / 2, opacityScale: 0.4 },
-        { width: strokeWidth, opacityScale: 1.0 }
-      ];
+      ${renderLogicJS.replace(/\n/g, '\n      ')}
 
-      layers.forEach(({ width: w, opacityScale }) => {
-        ctx.lineWidth = w;
-        for (let i = 1; i <= 50; i++) {
-          const ratio = i / 50;
-          const thetaStart = headTheta - trailRad * (1 - (i - 1) / 50);
-          const thetaEnd = headTheta - trailRad * (1 - ratio);
-
-          const pt1 = getPoint(thetaStart, t, size);
-          const pt2 = getPoint(thetaEnd, t, size);
-
-          ctx.beginPath();
-          ctx.moveTo(cx + pt1.x, cy + pt1.y);
-          ctx.lineTo(cx + pt2.x, cy + pt2.y);
-
-          const op = ratio * opacityScale;
-          const colors = getThemeColors(theme, op, thetaEnd, t);
-          ctx.strokeStyle = colors.line;
-          ctx.stroke();
-        }
-      });
-
-      // 3. Head glowing dot
-      const headPt = getPoint(headTheta, t, size);
-      const colors = getThemeColors(theme, 1.0, headTheta, t);
-
-      const glowGrad = ctx.createRadialGradient(
-        cx + headPt.x, cy + headPt.y, 0,
-        cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2
-      );
-      glowGrad.addColorStop(0, colors.line);
-      glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = glowGrad;
-      ctx.beginPath();
-      ctx.arc(cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(cx + headPt.x, cy + headPt.y, Math.max(1.5, strokeWidth * 0.6), 0, Math.PI * 2);
-      ctx.fill();
+      ${drawHeadNodeJS.replace(/\n/g, '\n      ')}
 
       t += 1;
       animationFrameId = requestAnimationFrame(draw);
@@ -1035,7 +1109,7 @@ export default function MathWaveLoader() {
   }, []);
 
   return (
-    <div className="flex items-center justify-center w-full aspect-square max-w-[320px] mx-auto rounded-2xl bg-zinc-950/40 border border-zinc-900 shadow-inner p-6">
+    <div className="flex items-center justify-center w-full aspect-square max-w-[320px] mx-auto rounded-2xl ${renderStyle === 'halftone' ? 'bg-black' : 'bg-zinc-950/40'} border border-zinc-900 shadow-inner p-6">
       <canvas ref={canvasRef} className="w-full h-full" />
     </div>
   );
@@ -1056,7 +1130,7 @@ export default function MathWaveLoader() {
   aspect-ratio: 1 / 1;
   margin: 0 auto;
   border-radius: 16px;
-  background-color: rgba(9, 9, 11, 0.4);
+  background-color: ${renderStyle === 'halftone' ? '#000000' : 'rgba(9, 9, 11, 0.4)'};
   border: 1px solid #18181b;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
   padding: 24px;
@@ -1070,7 +1144,6 @@ export default function MathWaveLoader() {
 }
 </style>
 
-<!-- Vanilla JS Math Tracing Logic -->
 <script>
 (function() {
   const canvas = document.getElementById('math-loader-canvas');
@@ -1091,11 +1164,6 @@ export default function MathWaveLoader() {
   resize();
   window.addEventListener('resize', resize);
 
-  // Configuration
-  const curveType = '${curveType}';
-  const k = ${k};
-  const freqA = ${freqA};
-  const freqB = ${freqB};
   const speed = ${speed};
   const breathScale = ${breath / 100};
   const trailLength = ${trailLength};
@@ -1110,28 +1178,7 @@ export default function MathWaveLoader() {
     let x = 0;
     let y = 0;
 
-    if (curveType === 'rose') {
-      const radius = Math.cos(k * theta) * breath;
-      x = radius * Math.cos(theta);
-      y = radius * Math.sin(theta);
-    } else if (curveType === 'lissajous') {
-      x = Math.sin(freqA * theta + time * 0.03) * breath;
-      y = Math.sin(freqB * theta) * breath;
-    } else if (curveType === 'lemniscate') {
-      const denom = 1 + Math.sin(theta) * Math.sin(theta);
-      x = (Math.cos(theta) / denom) * 1.2 * breath;
-      y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath;
-    } else if (curveType === 'hypotrochoid') {
-      const r_inner = 0.55 - 0.02 * k;
-      const d_dist = 0.45;
-      x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath;
-      y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath;
-    } else { // spiral
-      const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath;
-      const r = base_r + 0.3 * Math.cos(k * theta);
-      x = r * Math.cos(theta);
-      y = r * Math.sin(theta);
-    }
+    ${curveFormulaJS.replace(/\n/g, '\n    ')}
 
     return {
       x: x * (size * 0.4),
@@ -1144,6 +1191,11 @@ export default function MathWaveLoader() {
     const height = canvas.height / (window.devicePixelRatio || 1);
     ctx.clearRect(0, 0, width, height);
 
+    if ('${renderStyle}' === 'halftone') {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, width, height);
+    }
+
     const size = Math.min(width, height);
     const cx = width / 2;
     const cy = height / 2;
@@ -1151,69 +1203,26 @@ export default function MathWaveLoader() {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // 1. Trace Outline
-    ctx.beginPath();
-    const traceSteps = 300;
-    for (let i = 0; i <= traceSteps; i++) {
-      const theta = (i / traceSteps) * Math.PI * 2;
-      const pt = getPoint(theta, t, size);
-      if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y);
-      else ctx.lineTo(cx + pt.x, cy + pt.y);
+    if ('${renderStyle}' !== 'halftone') {
+      ctx.beginPath();
+      const traceSteps = 300;
+      for (let i = 0; i <= traceSteps; i++) {
+        const theta = (i / traceSteps) * Math.PI * 2;
+        const pt = getPoint(theta, t, size);
+        if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y);
+        else ctx.lineTo(cx + pt.x, cy + pt.y);
+      }
+      ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.06)' : getThemeColors(theme, 0.08).glow;
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
-    ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.06)' : getThemeColors(theme, 0.08).glow;
-    ctx.lineWidth = 1;
-    ctx.stroke();
 
-    // 2. Glowing trail
     const headTheta = t * 0.02 * speed;
     const trailRad = (trailLength / 100) * Math.PI;
 
-    const layers = [
-      { width: strokeWidth + glowSize, opacityScale: 0.15 },
-      { width: strokeWidth + glowSize / 2, opacityScale: 0.4 },
-      { width: strokeWidth, opacityScale: 1.0 }
-    ];
+    ${renderLogicJS.replace(/\n/g, '\n    ')}
 
-    layers.forEach(({ width: w, opacityScale }) => {
-      ctx.lineWidth = w;
-      for (let i = 1; i <= 50; i++) {
-        const ratio = i / 50;
-        const thetaStart = headTheta - trailRad * (1 - (i - 1) / 50);
-        const thetaEnd = headTheta - trailRad * (1 - ratio);
-
-        const pt1 = getPoint(thetaStart, t, size);
-        const pt2 = getPoint(thetaEnd, t, size);
-
-        ctx.beginPath();
-        ctx.moveTo(cx + pt1.x, cy + pt1.y);
-        ctx.lineTo(cx + pt2.x, cy + pt2.y);
-
-        const op = ratio * opacityScale;
-        const colors = getThemeColors(theme, op, thetaEnd, t);
-        ctx.strokeStyle = colors.line;
-        ctx.stroke();
-      }
-    });
-
-    // 3. Glow dot
-    const headPt = getPoint(headTheta, t, size);
-    const colors = getThemeColors(theme, 1.0, headTheta, t);
-
-    const glowGrad = ctx.createRadialGradient(
-      cx + headPt.x, cy + headPt.y, 0,
-      cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2
-    );
-    glowGrad.addColorStop(0, colors.line);
-    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = glowGrad;
-    ctx.beginPath();
-    ctx.arc(cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(cx + headPt.x, cy + headPt.y, Math.max(1.5, strokeWidth * 0.6), 0, Math.PI * 2);
-    ctx.fill();
+    ${drawHeadNodeJS.replace(/\n/g, '\n    ')}
 
     t += 1;
     animationFrameId = requestAnimationFrame(draw);
