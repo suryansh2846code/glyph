@@ -837,13 +837,13 @@ export default function CyberSkeleton() {
   {
     id: 'math-curve-pack',
     name: 'Mathematical Curve Loader Pack',
-    description: 'A showcase of 12 organic, high-performance mathematical loaders (Rose curves, Lissajous, Lemniscate, Heart, Butterfly, and Cosine Rings) animating in a unified grid.',
+    description: 'A showcase of 16 organic, high-performance mathematical loaders (spirals, rose curves, lissajous, cardioids, hearts, butterfly, Fourier flows, deltoids, and superformula stars) animating in a unified grid.',
     category: 'feedback',
     props: [
       { id: 'renderStyle', name: 'Render Styling', type: 'select', default: 'halftone', options: ['glow', 'dotted', 'halftone', 'minimalist'] },
       { id: 'lineColor', name: 'Primary Line Color', type: 'color', default: '#ffffff' },
       { id: 'glowColor', name: 'Glow Accent Color', type: 'color', default: '#ffffff' },
-      { id: 'exportCurve', name: 'Select Loader to Export', type: 'select', default: 'rose-curve', options: ['original-thinking', 'thinking-five', 'thinking-nine', 'rose-curve', 'rose-two', 'rose-four', 'lissajous', 'lemniscate', 'spirograph', 'spiral', 'heart-beat', 'butterfly-drift'] },
+      { id: 'exportCurve', name: 'Select Loader to Export', type: 'select', default: 'rose-curve', options: ['four-petal-spiral', 'five-petal-spiral', 'six-petal-spiral', 'butterfly-phase', 'cardioid-glow', 'cardioid-heart', 'heart-wave', 'spiral-search', 'lissajous-drift', 'lemniscate-bloom', 'rose-curve', 'fourier-flow', 'superformula-star', 'maurer-rose', 'deltoid-loop', 'cochleoid-shell'] },
       { id: 'speed', name: 'Trace Speed multiplier', type: 'number', default: 2.0, min: 0.5, max: 5.0, step: 0.1 },
       { id: 'breath', name: 'Pulse breathing size (%)', type: 'number', default: 15, min: 0, max: 40, step: 1 },
       { id: 'trailLength', name: 'Trail Length (%)', type: 'number', default: 80, min: 20, max: 200, step: 5 },
@@ -862,57 +862,79 @@ export default function CyberSkeleton() {
 
       // Define mathematical curve equations
       let curveFormulaJS = ''
-      if (exportCurve === 'original-thinking') {
-        curveFormulaJS = `const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath;
-      x = radius * Math.cos(theta + time * 0.015);
-      y = radius * Math.sin(theta + time * 0.015);`
-      } else if (exportCurve === 'thinking-five') {
-        curveFormulaJS = `const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath;
-      x = radius * Math.cos(theta - time * 0.012);
-      y = radius * Math.sin(theta - time * 0.012);`
-      } else if (exportCurve === 'thinking-nine') {
-        curveFormulaJS = `const radius = (0.6 + 0.3 * Math.cos(9 * theta)) * breath;
-      x = radius * Math.cos(theta + time * 0.01);
-      y = radius * Math.sin(theta + time * 0.01);`
+      if (exportCurve === 'four-petal-spiral') {
+        curveFormulaJS = `x = (0.5 * Math.cos(theta) + 0.5 * Math.cos(3 * theta)) * breath;
+      y = (0.5 * Math.sin(theta) - 0.5 * Math.sin(3 * theta)) * breath;`
+      } else if (exportCurve === 'five-petal-spiral') {
+        curveFormulaJS = `x = ((4 * Math.cos(theta) + 3 * Math.cos(4 * theta)) / 7) * breath;
+      y = ((4 * Math.sin(theta) - 3 * Math.sin(4 * theta)) / 7) * breath;`
+      } else if (exportCurve === 'six-petal-spiral') {
+        curveFormulaJS = `x = ((5 * Math.cos(theta) + 3 * Math.cos(5 * theta)) / 8) * breath;
+      y = ((5 * Math.sin(theta) - 3 * Math.sin(5 * theta)) / 8) * breath;`
+      } else if (exportCurve === 'butterfly-phase') {
+        curveFormulaJS = `const r_val = Math.exp(Math.sin(theta)) - 2 * Math.cos(4 * theta) + Math.pow(Math.sin((2 * theta - Math.PI) / 24), 5);
+      x = r_val * Math.cos(theta) * 0.28 * breath;
+      y = r_val * Math.sin(theta) * 0.28 * breath;`
+      } else if (exportCurve === 'cardioid-glow') {
+        curveFormulaJS = `const r_val = 0.5 * (1 - Math.cos(theta));
+      x = (r_val * Math.cos(theta) + 0.1) * 1.5 * breath;
+      y = (r_val * Math.sin(theta)) * 1.5 * breath;`
+      } else if (exportCurve === 'cardioid-heart') {
+        curveFormulaJS = `const r_val = 0.55 * (1 - Math.cos(theta));
+      x = r_val * Math.sin(theta) * 1.35 * breath;
+      y = (-r_val * Math.cos(theta) + 0.2) * 1.35 * breath;`
+      } else if (exportCurve === 'heart-wave') {
+        curveFormulaJS = `const x_val = Math.sqrt(3.3) * Math.sin(theta);
+      const y_val = Math.pow(Math.abs(x_val), 2/3) + 0.9 * Math.sqrt(3.3) * Math.cos(theta) * Math.sin(6.9 * Math.PI * x_val + time * 0.05);
+      x = x_val * 0.45 * breath;
+      y = -y_val * 0.45 * breath;`
+      } else if (exportCurve === 'spiral-search') {
+        curveFormulaJS = `const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.65;
+      const r = (base_r + 0.25 * Math.cos(3 * theta)) * breath;
+      x = r * Math.cos(theta);
+      y = r * Math.sin(theta);`
+      } else if (exportCurve === 'lissajous-drift') {
+        curveFormulaJS = `x = Math.sin(3 * theta + time * 0.03) * breath;
+      y = Math.sin(4 * theta) * breath;`
+      } else if (exportCurve === 'lemniscate-bloom') {
+        curveFormulaJS = `const denom = 1 + Math.sin(theta) * Math.sin(theta);
+      const lx = (Math.cos(theta) / denom) * 1.25;
+      const ly = (Math.sin(theta) * Math.cos(theta) / denom) * 1.25;
+      const rot = time * 0.006;
+      x = (lx * Math.cos(rot) - ly * Math.sin(rot)) * breath;
+      y = (lx * Math.sin(rot) + ly * Math.cos(rot)) * breath;`
       } else if (exportCurve === 'rose-curve') {
         curveFormulaJS = `const radius = Math.cos(5 * theta) * breath;
       x = radius * Math.cos(theta);
       y = radius * Math.sin(theta);`
-      } else if (exportCurve === 'rose-two') {
-        curveFormulaJS = `const radius = Math.cos(2 * theta) * breath;
-      x = radius * Math.cos(theta);
-      y = radius * Math.sin(theta);`
-      } else if (exportCurve === 'rose-four') {
-        curveFormulaJS = `const radius = Math.cos(4 * theta) * breath;
-      x = radius * Math.cos(theta);
-      y = radius * Math.sin(theta);`
-      } else if (exportCurve === 'lissajous') {
-        curveFormulaJS = `x = Math.sin(3 * theta + time * 0.03) * breath;
-      y = Math.sin(4 * theta) * breath;`
-      } else if (exportCurve === 'lemniscate') {
-        curveFormulaJS = `const denom = 1 + Math.sin(theta) * Math.sin(theta);
-      x = (Math.cos(theta) / denom) * 1.2 * breath;
-      y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath;`
-      } else if (exportCurve === 'spirograph') {
-        curveFormulaJS = `const r_inner = 0.45;
-      const d_dist = 0.38;
-      x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath;
-      y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath;`
-      } else if (exportCurve === 'spiral') {
-        curveFormulaJS = `const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath;
-      const r = base_r + 0.3 * Math.cos(3 * theta);
+      } else if (exportCurve === 'fourier-flow') {
+        curveFormulaJS = `const x_val = 17.8 * Math.cos(theta) + 7.5 * Math.cos(3 * theta + time * 0.02) + 3.2 * Math.sin(5 * theta - time * 0.015);
+      const y_val = 15.0 * Math.sin(theta) + 8.2 * Math.sin(2 * theta + time * 0.025) - 4.2 * Math.cos(4 * theta - time * 0.01);
+      x = x_val * 0.032 * breath;
+      y = y_val * 0.032 * breath;`
+      } else if (exportCurve === 'superformula-star') {
+        curveFormulaJS = `const pulseM = 5 + 2 * Math.sin(time * 0.02);
+      const t1 = Math.abs(Math.cos(pulseM * theta / 4));
+      const t2 = Math.abs(Math.sin(pulseM * theta / 4));
+      const r = Math.pow(Math.pow(t1, 1.7) + Math.pow(t2, 1.7), -1 / 0.2) * 0.5 * breath;
       x = r * Math.cos(theta);
       y = r * Math.sin(theta);`
-      } else if (exportCurve === 'heart-beat') {
-        curveFormulaJS = `const t_eq = theta;
-      x = 16 * Math.pow(Math.sin(t_eq), 3);
-      y = -(13 * Math.cos(t_eq) - 5 * Math.cos(2 * t_eq) - 2 * Math.cos(3 * t_eq) - Math.cos(4 * t_eq));
-      x = x * 0.07 * breath;
-      y = y * 0.07 * breath;`
-      } else { // butterfly-drift
-        curveFormulaJS = `const r_val = Math.exp(Math.sin(theta)) - 2 * Math.cos(4 * theta) + Math.pow(Math.sin((2 * theta - Math.PI) / 24), 5);
-      x = r_val * Math.cos(theta) * 0.3 * breath;
-      y = r_val * Math.sin(theta) * 0.3 * breath;`
+      } else if (exportCurve === 'maurer-rose') {
+        curveFormulaJS = `const angle = (theta * 180 / Math.PI);
+      const k = angle * (71 + 2 * Math.sin(time * 0.005)) * Math.PI / 180;
+      const r = Math.sin(6 * k) * 0.95 * breath;
+      x = r * Math.cos(k);
+      y = r * Math.sin(k);`
+      } else if (exportCurve === 'deltoid-loop') {
+        curveFormulaJS = `const d_breath = breath * (1.0 + 0.12 * Math.sin(time * 0.04));
+      x = (0.6 * Math.cos(theta) + 0.3 * Math.cos(2 * theta)) * d_breath;
+      y = (0.6 * Math.sin(theta) - 0.3 * Math.sin(2 * theta)) * d_breath;`
+      } else { // cochleoid-shell
+        curveFormulaJS = `const th = ((theta + Math.PI) % (Math.PI * 2)) - Math.PI;
+      const thVal = Math.abs(th) < 0.0001 ? 0.0001 : th;
+      const r = (Math.sin(3 * thVal) / thVal) * 0.28 * breath;
+      x = r * Math.cos(theta) - 0.2 * breath;
+      y = r * Math.sin(theta);`
       }
 
       // Define drawing render script

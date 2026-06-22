@@ -24,6 +24,105 @@ const hexToRgba = (hex: string, alpha: number) => {
   return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`
 }
 
+const CURVE_LOADERS = [
+  {
+    id: 'four-petal-spiral',
+    name: 'Four-Petal Spiral',
+    eq: 'R = 4, R = 1, D = 3',
+    desc: 'With R = 4, the rolling-circle path settles into four looping petals, rotating and breathing as one ring.'
+  },
+  {
+    id: 'five-petal-spiral',
+    name: 'Five-Petal Spiral',
+    eq: 'R = 5, R = 1, D = 3',
+    desc: 'With R = 5, the loop count increases to five petals, giving the spiral flower a denser and more ornate rhythm.'
+  },
+  {
+    id: 'six-petal-spiral',
+    name: 'Six-Petal Spiral',
+    eq: 'R = 6, R = 1, D = 3',
+    desc: 'The rolling-circle path splits into six petals, and the whole ring breathes in one unified pulse like the original loader.'
+  },
+  {
+    id: 'butterfly-phase',
+    name: 'Butterfly Phase',
+    eq: 'BUTTERFLY CURVE',
+    desc: 'Exponential and high-frequency cosine terms stretch the wings unevenly, giving the path its unmistakably fluttering butterfly shape.'
+  },
+  {
+    id: 'cardioid-glow',
+    name: 'Cardioid Glow',
+    eq: 'CARDIOID',
+    desc: 'Because r = a(1 - cos t) collapses to zero at one side and swells on the other, the curve reads like a soft pulsing heart wave.'
+  },
+  {
+    id: 'cardioid-heart',
+    name: 'Cardioid Heart',
+    eq: 'R = A(1 - COS T)',
+    desc: 'Starting from r = a(1 - cos t) and rotating the coordinates turns the textbook cardioid into a more legible upright heart.'
+  },
+  {
+    id: 'heart-wave',
+    name: 'Heart Wave',
+    eq: 'F(X) HEART WAVE',
+    desc: 'The x^(2/3) envelope supplies the heart outline, while sin(6.9*pi*x) fills its interior with adjustable horizontal ripples.'
+  },
+  {
+    id: 'spiral-search',
+    name: 'Spiral Search',
+    eq: 'ARCHIMEDEAN SPIRAL',
+    desc: 'A fast-growing angle combined with a cosine-modulated radius creates a spiral that opens out and closes cleanly back into itself.'
+  },
+  {
+    id: 'lissajous-drift',
+    name: 'Lissajous Drift',
+    eq: 'X = SIN(3θ), Y = SIN(4θ)',
+    desc: 'Driven by integer harmonic ratios on two axes, the drifting phase makes the path slowly orbit and morph over time.'
+  },
+  {
+    id: 'lemniscate-bloom',
+    name: 'Lemniscate Bloom',
+    eq: 'BERNOULLI LEMNISCATE',
+    desc: 'The infinity loop expands and contracts, rotating slightly around its center node to create an endless cosmic bloom.'
+  },
+  {
+    id: 'rose-curve',
+    name: 'Rose Curve',
+    eq: 'R = COS(5θ)',
+    desc: 'A classic polar rose whose odd integer multiplier yields five symmetrical lobes sweeping outwards.'
+  },
+  {
+    id: 'fourier-flow',
+    name: 'Fourier Flow',
+    eq: 'FOURIER CURVE',
+    desc: 'Several sine and cosine components interfere with one another, so the shape keeps mutating like a living waveform.'
+  },
+  {
+    id: 'superformula-star',
+    name: 'Superformula Star',
+    eq: 'GIELIS STAR',
+    desc: 'Using Gielis superellipse symmetry, the path morphs between sharp star configurations and soft organic polygons.'
+  },
+  {
+    id: 'maurer-rose',
+    name: 'Maurer Rose',
+    eq: 'MAURER n=6, d=71',
+    desc: 'Connecting vertices of a rose curve in a fixed angular step creates a complex geometric grid web pattern.'
+  },
+  {
+    id: 'deltoid-loop',
+    name: 'Deltoid Loop',
+    eq: 'DELTOID CURVE',
+    desc: 'A three-cusped hypocycloid path pulsing inward and outward like a futuristic delta shield.'
+  },
+  {
+    id: 'cochleoid-shell',
+    name: 'Cochleoid Shell',
+    eq: 'COCHLEOID SHELL',
+    desc: 'A spiral-like shell curve that tightly coils around the origin before ballooning out into a smooth dome.'
+  }
+]
+
 function SingleCurveCanvasCompact({ curveId, props }: { curveId: string; props: Record<string, any> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const renderStyle = props.renderStyle || 'halftone'
@@ -58,22 +157,65 @@ function SingleCurveCanvasCompact({ curveId, props }: { curveId: string; props: 
       let y = 0
 
       switch (curveId) {
-        case 'original-thinking': {
-          const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath
-          x = radius * Math.cos(theta + time * 0.015)
-          y = radius * Math.sin(theta + time * 0.015)
+        case 'four-petal-spiral': {
+          x = (0.5 * Math.cos(theta) + 0.5 * Math.cos(3 * theta)) * breath
+          y = (0.5 * Math.sin(theta) - 0.5 * Math.sin(3 * theta)) * breath
           break
         }
-        case 'thinking-five': {
-          const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath
-          x = radius * Math.cos(theta - time * 0.012)
-          y = radius * Math.sin(theta - time * 0.012)
+        case 'five-petal-spiral': {
+          x = ((4 * Math.cos(theta) + 3 * Math.cos(4 * theta)) / 7) * breath
+          y = ((4 * Math.sin(theta) - 3 * Math.sin(4 * theta)) / 7) * breath
           break
         }
-        case 'thinking-nine': {
-          const radius = (0.6 + 0.3 * Math.cos(9 * theta)) * breath
-          x = radius * Math.cos(theta + time * 0.01)
-          y = radius * Math.sin(theta + time * 0.01)
+        case 'six-petal-spiral': {
+          x = ((5 * Math.cos(theta) + 3 * Math.cos(5 * theta)) / 8) * breath
+          y = ((5 * Math.sin(theta) - 3 * Math.sin(5 * theta)) / 8) * breath
+          break
+        }
+        case 'butterfly-phase': {
+          const r_val = Math.exp(Math.sin(theta)) - 2 * Math.cos(4 * theta) + Math.pow(Math.sin((2 * theta - Math.PI) / 24), 5)
+          x = r_val * Math.cos(theta) * 0.28 * breath
+          y = r_val * Math.sin(theta) * 0.28 * breath
+          break
+        }
+        case 'cardioid-glow': {
+          const r_val = 0.5 * (1 - Math.cos(theta))
+          x = (r_val * Math.cos(theta) + 0.1) * 1.5 * breath
+          y = (r_val * Math.sin(theta)) * 1.5 * breath
+          break
+        }
+        case 'cardioid-heart': {
+          const r_val = 0.55 * (1 - Math.cos(theta))
+          x = r_val * Math.sin(theta) * 1.35 * breath
+          y = (-r_val * Math.cos(theta) + 0.2) * 1.35 * breath
+          break
+        }
+        case 'heart-wave': {
+          const x_val = Math.sqrt(3.3) * Math.sin(theta)
+          const y_val = Math.pow(Math.abs(x_val), 2/3) + 0.9 * Math.sqrt(3.3) * Math.cos(theta) * Math.sin(6.9 * Math.PI * x_val + time * 0.05)
+          x = x_val * 0.45 * breath
+          y = -y_val * 0.45 * breath
+          break
+        }
+        case 'spiral-search': {
+          const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.65
+          const r = (base_r + 0.25 * Math.cos(3 * theta)) * breath
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
+          break
+        }
+        case 'lissajous-drift': {
+          x = Math.sin(3 * theta + time * 0.03) * breath
+          y = Math.sin(4 * theta) * breath
+          break
+        }
+        case 'lemniscate-bloom': {
+          const denom = 1 + Math.sin(theta) * Math.sin(theta)
+          const lx = (Math.cos(theta) / denom) * 1.25
+          const ly = (Math.sin(theta) * Math.cos(theta) / denom) * 1.25
+          const rot = time * 0.006
+          x = (lx * Math.cos(rot) - ly * Math.sin(rot)) * breath
+          y = (lx * Math.sin(rot) + ly * Math.cos(rot)) * breath
           break
         }
         case 'rose-curve': {
@@ -82,55 +224,42 @@ function SingleCurveCanvasCompact({ curveId, props }: { curveId: string; props: 
           y = radius * Math.sin(theta)
           break
         }
-        case 'rose-two': {
-          const radius = Math.cos(2 * theta) * breath
-          x = radius * Math.cos(theta)
-          y = radius * Math.sin(theta)
+        case 'fourier-flow': {
+          const x_val = 17.8 * Math.cos(theta) + 7.5 * Math.cos(3 * theta + time * 0.02) + 3.2 * Math.sin(5 * theta - time * 0.015)
+          const y_val = 15.0 * Math.sin(theta) + 8.2 * Math.sin(2 * theta + time * 0.025) - 4.2 * Math.cos(4 * theta - time * 0.01)
+          x = x_val * 0.032 * breath
+          y = y_val * 0.032 * breath
           break
         }
-        case 'rose-four': {
-          const radius = Math.cos(4 * theta) * breath
-          x = radius * Math.cos(theta)
-          y = radius * Math.sin(theta)
-          break
-        }
-        case 'lissajous': {
-          x = Math.sin(3 * theta + time * 0.03) * breath
-          y = Math.sin(4 * theta) * breath
-          break
-        }
-        case 'lemniscate': {
-          const denom = 1 + Math.sin(theta) * Math.sin(theta)
-          x = (Math.cos(theta) / denom) * 1.2 * breath
-          y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath
-          break
-        }
-        case 'spirograph': {
-          const r_inner = 0.45
-          const d_dist = 0.38
-          x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath
-          y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath
-          break
-        }
-        case 'spiral': {
-          const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath
-          const r = base_r + 0.3 * Math.cos(3 * theta)
+        case 'superformula-star': {
+          const pulseM = 5 + 2 * Math.sin(time * 0.02)
+          const t1 = Math.abs(Math.cos(pulseM * theta / 4))
+          const t2 = Math.abs(Math.sin(pulseM * theta / 4))
+          const r = Math.pow(Math.pow(t1, 1.7) + Math.pow(t2, 1.7), -1 / 0.2) * 0.5 * breath
           x = r * Math.cos(theta)
           y = r * Math.sin(theta)
           break
         }
-        case 'heart-beat': {
-          const t_eq = theta
-          x = 16 * Math.pow(Math.sin(t_eq), 3)
-          y = -(13 * Math.cos(t_eq) - 5 * Math.cos(2 * t_eq) - 2 * Math.cos(3 * t_eq) - Math.cos(4 * t_eq))
-          x = x * 0.07 * breath
-          y = y * 0.07 * breath
+        case 'maurer-rose': {
+          const angle = (theta * 180 / Math.PI)
+          const k = angle * (71 + 2 * Math.sin(time * 0.005)) * Math.PI / 180
+          const r = Math.sin(6 * k) * 0.95 * breath
+          x = r * Math.cos(k)
+          y = r * Math.sin(k)
           break
         }
-        case 'butterfly-drift': {
-          const r_val = Math.exp(Math.sin(theta)) - 2 * Math.cos(4 * theta) + Math.pow(Math.sin((2 * theta - Math.PI) / 24), 5)
-          x = r_val * Math.cos(theta) * 0.3 * breath
-          y = r_val * Math.sin(theta) * 0.3 * breath
+        case 'deltoid-loop': {
+          const d_breath = breath * (1.0 + 0.12 * Math.sin(time * 0.04))
+          x = (0.6 * Math.cos(theta) + 0.3 * Math.cos(2 * theta)) * d_breath
+          y = (0.6 * Math.sin(theta) - 0.3 * Math.sin(2 * theta)) * d_breath
+          break
+        }
+        case 'cochleoid-shell': {
+          const th = ((theta + Math.PI) % (Math.PI * 2)) - Math.PI
+          const thVal = Math.abs(th) < 0.0001 ? 0.0001 : th
+          const r = (Math.sin(3 * thVal) / thVal) * 0.28 * breath
+          x = r * Math.cos(theta) - 0.2 * breath
+          y = r * Math.sin(theta)
           break
         }
         default:
@@ -250,7 +379,7 @@ function SingleCurveCanvasCompact({ curveId, props }: { curveId: string; props: 
   return <canvas ref={canvasRef} className="w-full h-full block" />
 }
 
-function SingleCurveCanvas({ curveId, props, name, equation, onClick, isLarge }: { curveId: string; props: Record<string, any>; name: string; equation: string; onClick?: () => void; isLarge?: boolean }) {
+function SingleCurveCanvas({ curveId, props, name, equation, desc, onClick, isLarge }: { curveId: string; props: Record<string, any>; name: string; equation: string; desc?: string; onClick?: () => void; isLarge?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const renderStyle = props.renderStyle || 'halftone'
   const lineColor = props.lineColor || '#ffffff'
@@ -289,22 +418,65 @@ function SingleCurveCanvas({ curveId, props, name, equation, onClick, isLarge }:
       let y = 0
 
       switch (curveId) {
-        case 'original-thinking': {
-          const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath
-          x = radius * Math.cos(theta + time * 0.015)
-          y = radius * Math.sin(theta + time * 0.015)
+        case 'four-petal-spiral': {
+          x = (0.5 * Math.cos(theta) + 0.5 * Math.cos(3 * theta)) * breath
+          y = (0.5 * Math.sin(theta) - 0.5 * Math.sin(3 * theta)) * breath
           break
         }
-        case 'thinking-five': {
-          const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath
-          x = radius * Math.cos(theta - time * 0.012)
-          y = radius * Math.sin(theta - time * 0.012)
+        case 'five-petal-spiral': {
+          x = ((4 * Math.cos(theta) + 3 * Math.cos(4 * theta)) / 7) * breath
+          y = ((4 * Math.sin(theta) - 3 * Math.sin(4 * theta)) / 7) * breath
           break
         }
-        case 'thinking-nine': {
-          const radius = (0.6 + 0.3 * Math.cos(9 * theta)) * breath
-          x = radius * Math.cos(theta + time * 0.01)
-          y = radius * Math.sin(theta + time * 0.01)
+        case 'six-petal-spiral': {
+          x = ((5 * Math.cos(theta) + 3 * Math.cos(5 * theta)) / 8) * breath
+          y = ((5 * Math.sin(theta) - 3 * Math.sin(5 * theta)) / 8) * breath
+          break
+        }
+        case 'butterfly-phase': {
+          const r_val = Math.exp(Math.sin(theta)) - 2 * Math.cos(4 * theta) + Math.pow(Math.sin((2 * theta - Math.PI) / 24), 5)
+          x = r_val * Math.cos(theta) * 0.28 * breath
+          y = r_val * Math.sin(theta) * 0.28 * breath
+          break
+        }
+        case 'cardioid-glow': {
+          const r_val = 0.5 * (1 - Math.cos(theta))
+          x = (r_val * Math.cos(theta) + 0.1) * 1.5 * breath
+          y = (r_val * Math.sin(theta)) * 1.5 * breath
+          break
+        }
+        case 'cardioid-heart': {
+          const r_val = 0.55 * (1 - Math.cos(theta))
+          x = r_val * Math.sin(theta) * 1.35 * breath
+          y = (-r_val * Math.cos(theta) + 0.2) * 1.35 * breath
+          break
+        }
+        case 'heart-wave': {
+          const x_val = Math.sqrt(3.3) * Math.sin(theta)
+          const y_val = Math.pow(Math.abs(x_val), 2/3) + 0.9 * Math.sqrt(3.3) * Math.cos(theta) * Math.sin(6.9 * Math.PI * x_val + time * 0.05)
+          x = x_val * 0.45 * breath
+          y = -y_val * 0.45 * breath
+          break
+        }
+        case 'spiral-search': {
+          const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.65
+          const r = (base_r + 0.25 * Math.cos(3 * theta)) * breath
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
+          break
+        }
+        case 'lissajous-drift': {
+          x = Math.sin(3 * theta + time * 0.03) * breath
+          y = Math.sin(4 * theta) * breath
+          break
+        }
+        case 'lemniscate-bloom': {
+          const denom = 1 + Math.sin(theta) * Math.sin(theta)
+          const lx = (Math.cos(theta) / denom) * 1.25
+          const ly = (Math.sin(theta) * Math.cos(theta) / denom) * 1.25
+          const rot = time * 0.006
+          x = (lx * Math.cos(rot) - ly * Math.sin(rot)) * breath
+          y = (lx * Math.sin(rot) + ly * Math.cos(rot)) * breath
           break
         }
         case 'rose-curve': {
@@ -313,55 +485,42 @@ function SingleCurveCanvas({ curveId, props, name, equation, onClick, isLarge }:
           y = radius * Math.sin(theta)
           break
         }
-        case 'rose-two': {
-          const radius = Math.cos(2 * theta) * breath
-          x = radius * Math.cos(theta)
-          y = radius * Math.sin(theta)
+        case 'fourier-flow': {
+          const x_val = 17.8 * Math.cos(theta) + 7.5 * Math.cos(3 * theta + time * 0.02) + 3.2 * Math.sin(5 * theta - time * 0.015)
+          const y_val = 15.0 * Math.sin(theta) + 8.2 * Math.sin(2 * theta + time * 0.025) - 4.2 * Math.cos(4 * theta - time * 0.01)
+          x = x_val * 0.032 * breath
+          y = y_val * 0.032 * breath
           break
         }
-        case 'rose-four': {
-          const radius = Math.cos(4 * theta) * breath
-          x = radius * Math.cos(theta)
-          y = radius * Math.sin(theta)
-          break
-        }
-        case 'lissajous': {
-          x = Math.sin(3 * theta + time * 0.03) * breath
-          y = Math.sin(4 * theta) * breath
-          break
-        }
-        case 'lemniscate': {
-          const denom = 1 + Math.sin(theta) * Math.sin(theta)
-          x = (Math.cos(theta) / denom) * 1.2 * breath
-          y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath
-          break
-        }
-        case 'spirograph': {
-          const r_inner = 0.45
-          const d_dist = 0.38
-          x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath
-          y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath
-          break
-        }
-        case 'spiral': {
-          const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath
-          const r = base_r + 0.3 * Math.cos(3 * theta)
+        case 'superformula-star': {
+          const pulseM = 5 + 2 * Math.sin(time * 0.02)
+          const t1 = Math.abs(Math.cos(pulseM * theta / 4))
+          const t2 = Math.abs(Math.sin(pulseM * theta / 4))
+          const r = Math.pow(Math.pow(t1, 1.7) + Math.pow(t2, 1.7), -1 / 0.2) * 0.5 * breath
           x = r * Math.cos(theta)
           y = r * Math.sin(theta)
           break
         }
-        case 'heart-beat': {
-          const t_eq = theta
-          x = 16 * Math.pow(Math.sin(t_eq), 3)
-          y = -(13 * Math.cos(t_eq) - 5 * Math.cos(2 * t_eq) - 2 * Math.cos(3 * t_eq) - Math.cos(4 * t_eq))
-          x = x * 0.07 * breath
-          y = y * 0.07 * breath
+        case 'maurer-rose': {
+          const angle = (theta * 180 / Math.PI)
+          const k = angle * (71 + 2 * Math.sin(time * 0.005)) * Math.PI / 180
+          const r = Math.sin(6 * k) * 0.95 * breath
+          x = r * Math.cos(k)
+          y = r * Math.sin(k)
           break
         }
-        case 'butterfly-drift': {
-          const r_val = Math.exp(Math.sin(theta)) - 2 * Math.cos(4 * theta) + Math.pow(Math.sin((2 * theta - Math.PI) / 24), 5)
-          x = r_val * Math.cos(theta) * 0.3 * breath
-          y = r_val * Math.sin(theta) * 0.3 * breath
+        case 'deltoid-loop': {
+          const d_breath = breath * (1.0 + 0.12 * Math.sin(time * 0.04))
+          x = (0.6 * Math.cos(theta) + 0.3 * Math.cos(2 * theta)) * d_breath
+          y = (0.6 * Math.sin(theta) - 0.3 * Math.sin(2 * theta)) * d_breath
+          break
+        }
+        case 'cochleoid-shell': {
+          const th = ((theta + Math.PI) % (Math.PI * 2)) - Math.PI
+          const thVal = Math.abs(th) < 0.0001 ? 0.0001 : th
+          const r = (Math.sin(3 * thVal) / thVal) * 0.28 * breath
+          x = r * Math.cos(theta) - 0.2 * breath
+          y = r * Math.sin(theta)
           break
         }
         default:
@@ -518,19 +677,30 @@ function SingleCurveCanvas({ curveId, props, name, equation, onClick, isLarge }:
     <div
       onClick={onClick}
       className={cn(
-        "relative rounded-xl border border-zinc-900 overflow-hidden flex flex-col justify-between items-center p-3 text-center transition-all duration-300",
-        isLarge ? "border-0 bg-transparent w-full max-w-[320px] h-auto" : (renderStyle === 'halftone' ? 'bg-black border-zinc-950 shadow-inner' : 'bg-zinc-950/40 hover:bg-zinc-950/70 border-zinc-900/60 hover:border-zinc-800'),
-        onClick && "cursor-pointer hover:border-primary/50 hover:bg-zinc-950/80 hover:shadow-lg hover:shadow-primary/[0.02]"
+        "relative rounded-xl border overflow-hidden flex flex-col justify-between transition-all duration-300",
+        isLarge
+          ? "border-0 bg-transparent w-full max-w-[320px] h-auto items-center text-center p-3"
+          : (renderStyle === 'halftone'
+              ? 'bg-black border-zinc-950 shadow-inner p-0'
+              : 'bg-zinc-950/40 hover:bg-zinc-950/70 border-zinc-900/60 hover:border-zinc-800 p-0'),
+        onClick && "cursor-pointer hover:border-primary/50 hover:bg-zinc-950/85 hover:shadow-lg hover:shadow-primary/[0.02] hover:-translate-y-0.5"
       )}
     >
-      <div className={cn("flex items-center justify-center relative", isLarge ? "w-[220px] h-[220px] sm:w-[280px] sm:h-[280px]" : "w-[100px] h-[100px] sm:w-[135px] sm:h-[135px]")}>
+      <div className={cn("flex items-center justify-center relative w-full", isLarge ? "w-[220px] h-[220px] sm:w-[280px] sm:h-[280px]" : "h-[160px] sm:h-[185px] border-b-2 border-zinc-900/80 bg-zinc-950/60")}>
         <canvas ref={canvasRef} className="w-full h-full block" />
       </div>
       
       {!isLarge && (
-        <div className="mt-2 text-left w-full border-t border-zinc-900/40 pt-2">
-          <div className="text-[11px] font-bold text-zinc-200 tracking-wide leading-none">{name}</div>
-          <div className="text-[9px] font-mono text-zinc-500 mt-1 select-all">{equation}</div>
+        <div className="p-3.5 flex flex-col text-left w-full">
+          <div className="flex justify-between items-baseline gap-1.5 w-full">
+            <div className="text-[11px] font-bold text-zinc-200 tracking-wide truncate">{name}</div>
+            <div className="text-[9px] font-mono text-zinc-500 font-semibold tracking-wider uppercase flex-shrink-0 select-all">{equation}</div>
+          </div>
+          {desc && (
+            <p className="text-[10px] text-zinc-400 leading-relaxed font-light mt-1.5 line-clamp-3">
+              {desc}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -540,20 +710,7 @@ function SingleCurveCanvas({ curveId, props, name, equation, onClick, isLarge }:
 function MathCurvePackPreview({ props, onSelect }: { props: Record<string, any>; onSelect?: (id: string) => void }) {
   const isCompact = !!props.isCompact
 
-  const loaders = [
-    { id: 'original-thinking', name: 'Original Thinking', eq: 'R = 1 + 0.35 * COS(7θ)' },
-    { id: 'thinking-five', name: 'Thinking Five', eq: 'R = 1 + 0.25 * COS(5θ)' },
-    { id: 'thinking-nine', name: 'Thinking Nine', eq: 'R = 1 + 0.3 * COS(9θ)' },
-    { id: 'rose-curve', name: 'Rose Curve', eq: 'R = COS(5θ)' },
-    { id: 'rose-two', name: 'Rose Two', eq: 'R = COS(2θ)' },
-    { id: 'rose-four', name: 'Rose Four', eq: 'R = COS(4θ)' },
-    { id: 'lissajous', name: 'Lissajous Drift', eq: 'X = SIN(3θ), Y = SIN(4θ)' },
-    { id: 'lemniscate', name: 'Lemniscate Bloom', eq: 'Bernoulli Lemniscate' },
-    { id: 'spirograph', name: 'Hypotrochoid Loop', eq: 'Inner Spirograph' },
-    { id: 'spiral', name: 'Three-Petal Spiral', eq: 'R = θ/(2π) + 0.3*COS(3θ)' },
-    { id: 'heart-beat', name: 'Cardioid Heart', eq: 'X = 16*SIN³θ, Y = -(13*COSθ - 5*COS2θ - ...)' },
-    { id: 'butterfly-drift', name: 'Butterfly Drift', eq: 'R = e^SINθ - 2*COS4θ + SIN⁵(...)' }
-  ]
+  const loaders = CURVE_LOADERS
 
   if (isCompact) {
     return (
@@ -577,6 +734,7 @@ function MathCurvePackPreview({ props, onSelect }: { props: Record<string, any>;
             props={props}
             name={loader.name}
             equation={loader.eq}
+            desc={loader.desc}
             onClick={() => onSelect?.(loader.id)}
           />
         ))}
@@ -588,20 +746,7 @@ function MathCurvePackPreview({ props, onSelect }: { props: Record<string, any>;
 function LivePreviewRenderer({ item, props, selectedSubLoader, onSelectSubLoader }: { item: ComponentItem; props: Record<string, any>; selectedSubLoader?: string | null; onSelectSubLoader?: (id: string | null) => void }) {
   if (item.id === 'math-curve-pack') {
     if (selectedSubLoader) {
-      const loaders = [
-        { id: 'original-thinking', name: 'Original Thinking', eq: 'R = 1 + 0.35 * COS(7θ)' },
-        { id: 'thinking-five', name: 'Thinking Five', eq: 'R = 1 + 0.25 * COS(5θ)' },
-        { id: 'thinking-nine', name: 'Thinking Nine', eq: 'R = 1 + 0.3 * COS(9θ)' },
-        { id: 'rose-curve', name: 'Rose Curve', eq: 'R = COS(5θ)' },
-        { id: 'rose-two', name: 'Rose Two', eq: 'R = COS(2θ)' },
-        { id: 'rose-four', name: 'Rose Four', eq: 'R = COS(4θ)' },
-        { id: 'lissajous', name: 'Lissajous Drift', eq: 'X = SIN(3θ), Y = SIN(4θ)' },
-        { id: 'lemniscate', name: 'Lemniscate Bloom', eq: 'Bernoulli Lemniscate' },
-        { id: 'spirograph', name: 'Hypotrochoid Loop', eq: 'Inner Spirograph' },
-        { id: 'spiral', name: 'Three-Petal Spiral', eq: 'R = θ/(2π) + 0.3*COS(3θ)' },
-        { id: 'heart-beat', name: 'Cardioid Heart', eq: 'X = 16*SIN³θ, Y = -(13*COSθ - 5*COS2θ - ...)' },
-        { id: 'butterfly-drift', name: 'Butterfly Drift', eq: 'R = e^SINθ - 2*COS4θ + SIN⁵(...)' }
-      ]
+      const loaders = CURVE_LOADERS
       const loader = loaders.find(l => l.id === selectedSubLoader) || loaders[0]
       return (
         <SingleCurveCanvas
@@ -609,6 +754,7 @@ function LivePreviewRenderer({ item, props, selectedSubLoader, onSelectSubLoader
           props={props}
           name={loader.name}
           equation={loader.eq}
+          desc={loader.desc}
           isLarge={true}
         />
       )
@@ -999,26 +1145,14 @@ export function MarketplaceView() {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
-                {[
-                  { id: 'original-thinking', name: 'Original Thinking', eq: 'R = 1 + 0.35 * COS(7θ)' },
-                  { id: 'thinking-five', name: 'Thinking Five', eq: 'R = 1 + 0.25 * COS(5θ)' },
-                  { id: 'thinking-nine', name: 'Thinking Nine', eq: 'R = 1 + 0.3 * COS(9θ)' },
-                  { id: 'rose-curve', name: 'Rose Curve', eq: 'R = COS(5θ)' },
-                  { id: 'rose-two', name: 'Rose Two', eq: 'R = COS(2θ)' },
-                  { id: 'rose-four', name: 'Rose Four', eq: 'R = COS(4θ)' },
-                  { id: 'lissajous', name: 'Lissajous Drift', eq: 'X = SIN(3θ), Y = SIN(4θ)' },
-                  { id: 'lemniscate', name: 'Lemniscate Bloom', eq: 'Bernoulli Lemniscate' },
-                  { id: 'spirograph', name: 'Hypotrochoid Loop', eq: 'Inner Spirograph' },
-                  { id: 'spiral', name: 'Three-Petal Spiral', eq: 'R = θ/(2π) + 0.3*COS(3θ)' },
-                  { id: 'heart-beat', name: 'Cardioid Heart', eq: 'X = 16*SIN³θ, Y = -(13*COSθ - 5*COS2θ - ...)' },
-                  { id: 'butterfly-drift', name: 'Butterfly Drift', eq: 'R = e^SINθ - 2*COS4θ + SIN⁵(...)' }
-                ].map((loader) => (
+                {CURVE_LOADERS.map((loader) => (
                   <SingleCurveCanvas
                     key={loader.id}
                     curveId={loader.id}
                     props={customProps}
                     name={loader.name}
                     equation={loader.eq}
+                    desc={loader.desc}
                     onClick={() => {
                       setSelectedSubLoader(loader.id)
                       handlePropChange('exportCurve', loader.id)
