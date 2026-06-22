@@ -1,5 +1,7 @@
 # Glyph — Halftone Effect Studio
 
+**Live Demo**: [glyph.suryanshdev.xyz](https://glyph.suryanshdev.xyz/)
+
 Upload an image, GIF, or video and convert it into a tunable **halftone glyph**
 render — the dotted / sparkle effect — then export the result. Everything runs
 client-side in the browser; nothing is uploaded to a server.
