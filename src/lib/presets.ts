@@ -1,0 +1,121 @@
+import { DEFAULT_SETTINGS, type EffectSettings } from './effect'
+
+export interface Preset {
+  id: string
+  name: string
+  description: string
+  settings: EffectSettings
+}
+
+export const PRESETS: Preset[] = [
+  {
+    id: 'peach-sparkle',
+    name: 'Peach Sparkle',
+    description: 'Warm gradient with mixed dots & stars',
+    settings: {
+      ...DEFAULT_SETTINGS,
+      glyphStyle: 'mixed',
+      bgMode: 'gradient',
+      bg1: '#ffe8d6',
+      bg2: '#ffb083',
+      bgAngle: 145,
+      fg: '#0a0a0a',
+      cellSize: 9,
+      contrast: 22,
+      levels: 6,
+      dotScale: 1.05,
+      jitter: 0.2,
+    },
+  },
+  {
+    id: 'fine-dither',
+    name: 'Fine Dither',
+    description: 'Dense small dots, high detail',
+    settings: {
+      ...DEFAULT_SETTINGS,
+      glyphStyle: 'circle',
+      bgMode: 'gradient',
+      bg1: '#fff1e6',
+      bg2: '#ffc9a3',
+      bgAngle: 120,
+      fg: '#111111',
+      cellSize: 6,
+      contrast: 14,
+      levels: 8,
+      dotScale: 1.1,
+      jitter: 0,
+    },
+  },
+  {
+    id: 'crosshatch',
+    name: 'Crosshatch',
+    description: 'Plus-mark stipple on cream',
+    settings: {
+      ...DEFAULT_SETTINGS,
+      glyphStyle: 'cross',
+      bgMode: 'solid',
+      bg1: '#fbf3e9',
+      fg: '#1a1a1a',
+      cellSize: 8,
+      contrast: 26,
+      levels: 5,
+      dotScale: 1.2,
+      jitter: 0.1,
+    },
+  },
+  {
+    id: 'mono-square',
+    name: 'Mono Square',
+    description: 'Classic square halftone, B/W',
+    settings: {
+      ...DEFAULT_SETTINGS,
+      glyphStyle: 'square',
+      bgMode: 'solid',
+      bg1: '#ffffff',
+      fg: '#000000',
+      cellSize: 10,
+      contrast: 10,
+      levels: 6,
+      dotScale: 1,
+      jitter: 0,
+    },
+  },
+  {
+    id: 'ascii-terminal',
+    name: 'ASCII',
+    description: 'Text-glyph ramp render',
+    settings: {
+      ...DEFAULT_SETTINGS,
+      glyphStyle: 'ascii',
+      bgMode: 'solid',
+      bg1: '#0c0c0f',
+      fg: '#e9e2d0',
+      cellSize: 9,
+      contrast: 20,
+      levels: 10,
+      dotScale: 1,
+      jitter: 0,
+      invert: false,
+    },
+  },
+  {
+    id: 'neon-night',
+    name: 'Neon Night',
+    description: 'Glowing dots on dark gradient',
+    settings: {
+      ...DEFAULT_SETTINGS,
+      glyphStyle: 'circle',
+      bgMode: 'gradient',
+      bg1: '#0d0b1f',
+      bg2: '#2a0f3a',
+      bgAngle: 160,
+      fg: '#7df9ff',
+      cellSize: 8,
+      contrast: 24,
+      levels: 7,
+      dotScale: 1.1,
+      jitter: 0,
+      invert: true,
+    },
+  },
+]
