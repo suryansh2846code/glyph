@@ -837,13 +837,13 @@ export default function CyberSkeleton() {
   {
     id: 'math-curve-pack',
     name: 'Mathematical Curve Loader Pack',
-    description: 'A showcase of 16 organic, high-performance mathematical loaders (spirals, rose curves, lissajous, cardioids, hearts, butterfly, Fourier flows, deltoids, and superformula stars) animating in a unified grid.',
+    description: 'A showcase of 28 organic, high-performance mathematical loaders (spirals, rose curves, lissajous, cardioids, hearts, butterfly, Fourier flows, deltoids, astroids, and superformula stars) animating in a unified grid.',
     category: 'feedback',
     props: [
       { id: 'renderStyle', name: 'Render Styling', type: 'select', default: 'halftone', options: ['glow', 'dotted', 'halftone', 'minimalist'] },
       { id: 'lineColor', name: 'Primary Line Color', type: 'color', default: '#ffffff' },
       { id: 'glowColor', name: 'Glow Accent Color', type: 'color', default: '#ffffff' },
-      { id: 'exportCurve', name: 'Select Loader to Export', type: 'select', default: 'rose-curve', options: ['four-petal-spiral', 'five-petal-spiral', 'six-petal-spiral', 'butterfly-phase', 'cardioid-glow', 'cardioid-heart', 'heart-wave', 'spiral-search', 'lissajous-drift', 'lemniscate-bloom', 'rose-curve', 'fourier-flow', 'superformula-star', 'maurer-rose', 'deltoid-loop', 'cochleoid-shell'] },
+      { id: 'exportCurve', name: 'Select Loader to Export', type: 'select', default: 'rose-curve', options: ['four-petal-spiral', 'five-petal-spiral', 'six-petal-spiral', 'butterfly-phase', 'cardioid-glow', 'cardioid-heart', 'heart-wave', 'spiral-search', 'lissajous-drift', 'lemniscate-bloom', 'rose-curve', 'fourier-flow', 'superformula-star', 'maurer-rose', 'deltoid-loop', 'cochleoid-shell', 'original-thinking', 'thinking-five', 'thinking-nine', 'rose-two', 'rose-four', 'spirograph', 'spiral', 'astroid-wave', 'fermat-spiral', 'folium-wave', 'lituus-coil', 'logarithmic-spiral'] },
       { id: 'speed', name: 'Trace Speed multiplier', type: 'number', default: 2.0, min: 0.5, max: 5.0, step: 0.1 },
       { id: 'breath', name: 'Pulse breathing size (%)', type: 'number', default: 15, min: 0, max: 40, step: 1 },
       { id: 'trailLength', name: 'Trail Length (%)', type: 'number', default: 80, min: 20, max: 200, step: 5 },
@@ -929,12 +929,69 @@ export default function CyberSkeleton() {
         curveFormulaJS = `const d_breath = breath * (1.0 + 0.12 * Math.sin(time * 0.04));
       x = (0.6 * Math.cos(theta) + 0.3 * Math.cos(2 * theta)) * d_breath;
       y = (0.6 * Math.sin(theta) - 0.3 * Math.sin(2 * theta)) * d_breath;`
-      } else { // cochleoid-shell
+      } else if (exportCurve === 'cochleoid-shell') {
         curveFormulaJS = `const th = ((theta + Math.PI) % (Math.PI * 2)) - Math.PI;
       const thVal = Math.abs(th) < 0.0001 ? 0.0001 : th;
       const r = (Math.sin(3 * thVal) / thVal) * 0.28 * breath;
       x = r * Math.cos(theta) - 0.2 * breath;
       y = r * Math.sin(theta);`
+      } else if (exportCurve === 'original-thinking') {
+        curveFormulaJS = `const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath;
+      x = radius * Math.cos(theta + time * 0.015);
+      y = radius * Math.sin(theta + time * 0.015);`
+      } else if (exportCurve === 'thinking-five') {
+        curveFormulaJS = `const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath;
+      x = radius * Math.cos(theta - time * 0.012);
+      y = radius * Math.sin(theta - time * 0.012);`
+      } else if (exportCurve === 'thinking-nine') {
+        curveFormulaJS = `const radius = (0.6 + 0.3 * Math.cos(9 * theta)) * breath;
+      x = radius * Math.cos(theta + time * 0.01);
+      y = radius * Math.sin(theta + time * 0.01);`
+      } else if (exportCurve === 'rose-two') {
+        curveFormulaJS = `const radius = Math.cos(2 * theta) * breath;
+      x = radius * Math.cos(theta);
+      y = radius * Math.sin(theta);`
+      } else if (exportCurve === 'rose-four') {
+        curveFormulaJS = `const radius = Math.cos(4 * theta) * breath;
+      x = radius * Math.cos(theta);
+      y = radius * Math.sin(theta);`
+      } else if (exportCurve === 'spirograph') {
+        curveFormulaJS = `const r_inner = 0.45;
+      const d_dist = 0.38;
+      x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath;
+      y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath;`
+      } else if (exportCurve === 'spiral') {
+        curveFormulaJS = `const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath;
+      const r = base_r + 0.3 * Math.cos(3 * theta);
+      x = r * Math.cos(theta);
+      y = r * Math.sin(theta);`
+      } else if (exportCurve === 'astroid-wave') {
+        curveFormulaJS = `const rad = time * 0.005;
+      const ax = Math.pow(Math.cos(theta), 3) * breath;
+      const ay = Math.pow(Math.sin(theta), 3) * breath;
+      x = (ax * Math.cos(rad) - ay * Math.sin(rad));
+      y = (ax * Math.sin(rad) + ay * Math.cos(rad));`
+      } else if (exportCurve === 'fermat-spiral') {
+        curveFormulaJS = `const th = (theta % (Math.PI * 4));
+      const r = Math.sqrt(th / (Math.PI * 4)) * breath;
+      x = r * Math.cos(theta + time * 0.01);
+      y = r * Math.sin(theta + time * 0.01);`
+      } else if (exportCurve === 'folium-wave') {
+        curveFormulaJS = `const r = (Math.cos(theta) * (2 * Math.cos(theta) - 1)) * breath;
+      x = r * Math.cos(theta);
+      y = r * Math.sin(theta);`
+      } else if (exportCurve === 'lituus-coil') {
+        curveFormulaJS = `const th = (theta % (Math.PI * 4)) + 0.1;
+      const r = (1 / Math.sqrt(th)) * 0.7 * breath;
+      x = r * Math.cos(theta);
+      y = r * Math.sin(theta);`
+      } else { // logarithmic-spiral
+        curveFormulaJS = `const zoom = (time * 0.01) % 1.0;
+      const th = (theta % (Math.PI * 4));
+      const scaleFactor = Math.exp(-0.15 * zoom * Math.PI * 2);
+      const r = Math.exp(0.15 * th) * 0.15 * scaleFactor * breath;
+      x = r * Math.cos(theta + zoom * Math.PI * 2);
+      y = r * Math.sin(theta + zoom * Math.PI * 2);`
       }
 
       // Define drawing render script

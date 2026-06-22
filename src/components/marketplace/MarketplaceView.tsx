@@ -41,13 +41,13 @@ const CURVE_LOADERS = [
     id: 'six-petal-spiral',
     name: 'Six-Petal Spiral',
     eq: 'R = 6, R = 1, D = 3',
-    desc: 'The rolling-circle path splits into six petals, and the whole ring breathes in one unified pulse like the original loader.'
+    desc: 'The rolling-circle path splits into six petals, and the whole ring breathes in one unified pulse.'
   },
   {
     id: 'butterfly-phase',
     name: 'Butterfly Phase',
     eq: 'BUTTERFLY CURVE',
-    desc: 'Exponential and high-frequency cosine terms stretch the wings unevenly, giving the path its unmistakably fluttering butterfly shape.'
+    desc: 'Exponential and high-frequency cosine terms stretch the wings unevenly, giving the path its unpredictably fluttering shape.'
   },
   {
     id: 'cardioid-glow',
@@ -120,6 +120,78 @@ const CURVE_LOADERS = [
     name: 'Cochleoid Shell',
     eq: 'COCHLEOID SHELL',
     desc: 'A spiral-like shell curve that tightly coils around the origin before ballooning out into a smooth dome.'
+  },
+  {
+    id: 'original-thinking',
+    name: 'Original Thinking',
+    eq: 'R = 1 + 0.35 * COS(7θ)',
+    desc: 'A seven-fold breathing cosine ring that expands and contracts, pulsing like an organic loader.'
+  },
+  {
+    id: 'thinking-five',
+    name: 'Thinking Five',
+    eq: 'R = 1 + 0.25 * COS(5θ)',
+    desc: 'A five-fold breathing cosine ring that pulses with a slow, hypnotic rotational offset.'
+  },
+  {
+    id: 'thinking-nine',
+    name: 'Thinking Nine',
+    eq: 'R = 1 + 0.3 * COS(9θ)',
+    desc: 'A nine-fold breathing cosine ring with high-frequency ripples that rotate around its circular body.'
+  },
+  {
+    id: 'rose-two',
+    name: 'Rose Two',
+    eq: 'R = COS(2θ)',
+    desc: 'A two-petal rose curve sweeping left to right, creating a dual-loop horizontal shape.'
+  },
+  {
+    id: 'rose-four',
+    name: 'Rose Four',
+    eq: 'R = COS(4θ)',
+    desc: 'A four-petal rose curve whose symmetrical lobes rotate in a balanced quadrant layout.'
+  },
+  {
+    id: 'spirograph',
+    name: 'Hypotrochoid Loop',
+    eq: 'R = 0.55, r = 0.45, d = 0.38',
+    desc: 'A spirograph loop created by rolling an inner circle, producing complex nested orbits.'
+  },
+  {
+    id: 'spiral',
+    name: 'Three-Petal Spiral',
+    eq: 'R = θ/(2π) + 0.3*COS(3θ)',
+    desc: 'A lobed spiral whose path wind outwards while modulated by a three-fold cosine wave.'
+  },
+  {
+    id: 'astroid-wave',
+    name: 'Astroid Wave',
+    eq: 'X³ + Y³ = A³',
+    desc: 'A four-cusped hypocycloid forming a sharp star-like diamond that expands and rotates over time.'
+  },
+  {
+    id: 'fermat-spiral',
+    name: 'Fermat Spiral',
+    eq: 'R² = A²θ',
+    desc: 'A double-branched parabolic spiral that unfurls symmetrically outwards like winding solar rays.'
+  },
+  {
+    id: 'folium-wave',
+    name: 'Folium Wave',
+    eq: 'FOLIUM CURVE',
+    desc: 'A loop with twin symmetrical wings that breathe and flutter like small flower petals.'
+  },
+  {
+    id: 'lituus-coil',
+    name: 'Lituus Coil',
+    eq: 'R²θ = A',
+    desc: 'A trumpet-like spiral that wraps infinitely around the origin before flaring out into outer space.'
+  },
+  {
+    id: 'logarithmic-spiral',
+    name: 'Logarithmic Spiral',
+    eq: 'R = EXP(0.15θ)',
+    desc: 'A classic logarithmic spiral that grows exponentially, tracing the perfect golden ratio zoom.'
   }
 ]
 
@@ -260,6 +332,87 @@ function SingleCurveCanvasCompact({ curveId, props }: { curveId: string; props: 
           const r = (Math.sin(3 * thVal) / thVal) * 0.28 * breath
           x = r * Math.cos(theta) - 0.2 * breath
           y = r * Math.sin(theta)
+          break
+        }
+        case 'original-thinking': {
+          const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath
+          x = radius * Math.cos(theta + time * 0.015)
+          y = radius * Math.sin(theta + time * 0.015)
+          break
+        }
+        case 'thinking-five': {
+          const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath
+          x = radius * Math.cos(theta - time * 0.012)
+          y = radius * Math.sin(theta - time * 0.012)
+          break
+        }
+        case 'thinking-nine': {
+          const radius = (0.6 + 0.3 * Math.cos(9 * theta)) * breath
+          x = radius * Math.cos(theta + time * 0.01)
+          y = radius * Math.sin(theta + time * 0.01)
+          break
+        }
+        case 'rose-two': {
+          const radius = Math.cos(2 * theta) * breath
+          x = radius * Math.cos(theta)
+          y = radius * Math.sin(theta)
+          break
+        }
+        case 'rose-four': {
+          const radius = Math.cos(4 * theta) * breath
+          x = radius * Math.cos(theta)
+          y = radius * Math.sin(theta)
+          break
+        }
+        case 'spirograph': {
+          const r_inner = 0.45
+          const d_dist = 0.38
+          x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath
+          y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath
+          break
+        }
+        case 'spiral': {
+          const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath
+          const r = base_r + 0.3 * Math.cos(3 * theta)
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
+          break
+        }
+        case 'astroid-wave': {
+          const rad = time * 0.005
+          const ax = Math.pow(Math.cos(theta), 3) * breath
+          const ay = Math.pow(Math.sin(theta), 3) * breath
+          x = (ax * Math.cos(rad) - ay * Math.sin(rad))
+          y = (ax * Math.sin(rad) + ay * Math.cos(rad))
+          break
+        }
+        case 'fermat-spiral': {
+          const th = (theta % (Math.PI * 4))
+          const r = Math.sqrt(th / (Math.PI * 4)) * breath
+          x = r * Math.cos(theta + time * 0.01)
+          y = r * Math.sin(theta + time * 0.01)
+          break
+        }
+        case 'folium-wave': {
+          const r = (Math.cos(theta) * (2 * Math.cos(theta) - 1)) * breath
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
+          break
+        }
+        case 'lituus-coil': {
+          const th = (theta % (Math.PI * 4)) + 0.1
+          const r = (1 / Math.sqrt(th)) * 0.7 * breath
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
+          break
+        }
+        case 'logarithmic-spiral': {
+          const zoom = (time * 0.01) % 1.0
+          const th = (theta % (Math.PI * 4))
+          const scaleFactor = Math.exp(-0.15 * zoom * Math.PI * 2)
+          const r = Math.exp(0.15 * th) * 0.15 * scaleFactor * breath
+          x = r * Math.cos(theta + zoom * Math.PI * 2)
+          y = r * Math.sin(theta + zoom * Math.PI * 2)
           break
         }
         default:
@@ -521,6 +674,87 @@ function SingleCurveCanvas({ curveId, props, name, equation, desc, onClick, isLa
           const r = (Math.sin(3 * thVal) / thVal) * 0.28 * breath
           x = r * Math.cos(theta) - 0.2 * breath
           y = r * Math.sin(theta)
+          break
+        }
+        case 'original-thinking': {
+          const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath
+          x = radius * Math.cos(theta + time * 0.015)
+          y = radius * Math.sin(theta + time * 0.015)
+          break
+        }
+        case 'thinking-five': {
+          const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath
+          x = radius * Math.cos(theta - time * 0.012)
+          y = radius * Math.sin(theta - time * 0.012)
+          break
+        }
+        case 'thinking-nine': {
+          const radius = (0.6 + 0.3 * Math.cos(9 * theta)) * breath
+          x = radius * Math.cos(theta + time * 0.01)
+          y = radius * Math.sin(theta + time * 0.01)
+          break
+        }
+        case 'rose-two': {
+          const radius = Math.cos(2 * theta) * breath
+          x = radius * Math.cos(theta)
+          y = radius * Math.sin(theta)
+          break
+        }
+        case 'rose-four': {
+          const radius = Math.cos(4 * theta) * breath
+          x = radius * Math.cos(theta)
+          y = radius * Math.sin(theta)
+          break
+        }
+        case 'spirograph': {
+          const r_inner = 0.45
+          const d_dist = 0.38
+          x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath
+          y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath
+          break
+        }
+        case 'spiral': {
+          const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath
+          const r = base_r + 0.3 * Math.cos(3 * theta)
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
+          break
+        }
+        case 'astroid-wave': {
+          const rad = time * 0.005
+          const ax = Math.pow(Math.cos(theta), 3) * breath
+          const ay = Math.pow(Math.sin(theta), 3) * breath
+          x = (ax * Math.cos(rad) - ay * Math.sin(rad))
+          y = (ax * Math.sin(rad) + ay * Math.cos(rad))
+          break
+        }
+        case 'fermat-spiral': {
+          const th = (theta % (Math.PI * 4))
+          const r = Math.sqrt(th / (Math.PI * 4)) * breath
+          x = r * Math.cos(theta + time * 0.01)
+          y = r * Math.sin(theta + time * 0.01)
+          break
+        }
+        case 'folium-wave': {
+          const r = (Math.cos(theta) * (2 * Math.cos(theta) - 1)) * breath
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
+          break
+        }
+        case 'lituus-coil': {
+          const th = (theta % (Math.PI * 4)) + 0.1
+          const r = (1 / Math.sqrt(th)) * 0.7 * breath
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
+          break
+        }
+        case 'logarithmic-spiral': {
+          const zoom = (time * 0.01) % 1.0
+          const th = (theta % (Math.PI * 4))
+          const scaleFactor = Math.exp(-0.15 * zoom * Math.PI * 2)
+          const r = Math.exp(0.15 * th) * 0.15 * scaleFactor * breath
+          x = r * Math.cos(theta + zoom * Math.PI * 2)
+          y = r * Math.sin(theta + zoom * Math.PI * 2)
           break
         }
         default:
