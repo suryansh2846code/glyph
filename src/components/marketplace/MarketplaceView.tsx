@@ -407,12 +407,13 @@ function SingleCurveCanvasCompact({ curveId, props }: { curveId: string; props: 
           break
         }
         case 'logarithmic-spiral': {
-          const zoom = (time * 0.01) % 1.0
-          const th = (theta % (Math.PI * 4))
-          const scaleFactor = Math.exp(-0.15 * zoom * Math.PI * 2)
-          const r = Math.exp(0.15 * th) * 0.15 * scaleFactor * breath
-          x = r * Math.cos(theta + zoom * Math.PI * 2)
-          y = r * Math.sin(theta + zoom * Math.PI * 2)
+          const headTheta = time * 0.02 * speed
+          const relTheta = theta - headTheta
+          // relTheta is in range [-trailRad, 0] during rendering;
+          // keep the profile continuous by using relTheta directly
+          const r = Math.exp(0.18 * relTheta) * 0.75 * breath
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
           break
         }
         default:
@@ -749,12 +750,12 @@ function SingleCurveCanvas({ curveId, props, name, equation, desc, onClick, isLa
           break
         }
         case 'logarithmic-spiral': {
-          const zoom = (time * 0.01) % 1.0
-          const th = (theta % (Math.PI * 4))
-          const scaleFactor = Math.exp(-0.15 * zoom * Math.PI * 2)
-          const r = Math.exp(0.15 * th) * 0.15 * scaleFactor * breath
-          x = r * Math.cos(theta + zoom * Math.PI * 2)
-          y = r * Math.sin(theta + zoom * Math.PI * 2)
+          const headTheta = time * 0.02 * speed
+          const relTheta = theta - headTheta
+          // Continuous spiral: radius grows with relative angular distance from head
+          const r = Math.exp(0.18 * relTheta) * 0.75 * breath
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
           break
         }
         default:
@@ -1397,9 +1398,9 @@ export function MarketplaceView() {
             </div>
           ) : (
             /* STANDARD SPLIT CUSTOMIZER WORKSPACE */
-            <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
               {/* Left Screen: Live Interactive Canvas */}
-              <div className="space-y-4">
+              <div className="space-y-4 min-w-0">
                 <div className="relative flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-950/20 overflow-hidden shadow-2xl">
                   {/* Visual Canvas Info Header */}
                   <div className="flex items-center justify-between border-b border-zinc-900/80 bg-zinc-950/60 px-4 py-3">
@@ -1489,7 +1490,7 @@ export function MarketplaceView() {
               </div>
 
               {/* Right Screen: Property Customizer Panel */}
-              <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/65 p-5 shadow-xl space-y-6">
+              <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/65 p-5 shadow-xl space-y-6 min-w-0 overflow-hidden">
                 <div className="space-y-1.5 border-b border-zinc-900 pb-4">
                   <span className="text-[10px] uppercase font-bold tracking-widest text-primary font-mono">{activeItem.category}</span>
                   <h2 className="text-lg font-extrabold text-zinc-100 leading-snug">{activeItem.name}</h2>

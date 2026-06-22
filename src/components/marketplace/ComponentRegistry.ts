@@ -986,12 +986,12 @@ export default function CyberSkeleton() {
       x = r * Math.cos(theta);
       y = r * Math.sin(theta);`
       } else { // logarithmic-spiral
-        curveFormulaJS = `const zoom = (time * 0.01) % 1.0;
-      const th = (theta % (Math.PI * 4));
-      const scaleFactor = Math.exp(-0.15 * zoom * Math.PI * 2);
-      const r = Math.exp(0.15 * th) * 0.15 * scaleFactor * breath;
-      x = r * Math.cos(theta + zoom * Math.PI * 2);
-      y = r * Math.sin(theta + zoom * Math.PI * 2);`
+        curveFormulaJS = `// Continuous logarithmic spiral — rotates without discontinuity
+      const headTheta = time * 0.02 * speed;
+      const relTheta = theta - headTheta;
+      const r = Math.exp(0.18 * relTheta) * 0.75 * breath;
+      x = r * Math.cos(theta);
+      y = r * Math.sin(theta);`
       }
 
       // Define drawing render script

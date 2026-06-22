@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node /tmp/glyph-verify.mjs)",
+      "Bash(cp /tmp/glyph-verify.mjs /Users/achintyamacmini/Desktop/glyph/verify.mjs)",
+      "Bash(node /Users/achintyamacmini/Desktop/glyph/verify.mjs)",
+      "Bash(ffmpeg -version)",
+      "Read(//private/tmp/**)",
+      "Bash(ffmpeg -y -f lavfi -i testsrc=duration=2:size=320x240:rate=15 -pix_fmt yuv420p -movflags +faststart glyph-test.mp4)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(curl -s -o /dev/null -w \"5174 HTTP %{http_code}\\\\n\" http://localhost:5174/)",
+      "Bash(node /Users/achintyamacmini/Desktop/glyph/va.mjs)",
+      "Bash(npm run *)",
+      "Bash(node /Users/achintyamacmini/Desktop/glyph/vd.mjs)"
+    ]
+  }
+}

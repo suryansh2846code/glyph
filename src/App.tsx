@@ -146,7 +146,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className={cn(
-        "flex-1",
+        "flex-1 min-w-0",
         isGlyphStudioActive ? "p-0" : "mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 relative z-10"
       )}>
         {renderActiveContent()}
