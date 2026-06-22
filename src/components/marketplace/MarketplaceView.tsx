@@ -17,10 +17,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
+const hexToRgba = (hex: string, alpha: number) => {
+  let c = hex.substring(1)
+  if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]
+  const num = parseInt(c, 16)
+  return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`
+}
+
 function SingleCurveCanvasCompact({ curveId, props }: { curveId: string; props: Record<string, any> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const renderStyle = props.renderStyle || 'glow'
-  const theme = props.theme || 'purple-indigo'
+  const renderStyle = props.renderStyle || 'halftone'
+  const lineColor = props.lineColor || '#ffffff'
+  const glowColor = props.glowColor || '#ffffff'
   const speed = Number(props.speed ?? 2.0)
   const breathScale = Number(props.breath ?? 15) / 100
   const trailLength = Number(props.trailLength ?? 80)
@@ -43,227 +51,6 @@ function SingleCurveCanvasCompact({ curveId, props }: { curveId: string; props: 
     }
 
     resize()
-
-    const getThemeColors = (themeStr: string, opacity: number, theta = 0, time = 0) => {
-      switch (themeStr) {
-        case 'purple-indigo':
-          return { line: `rgba(167, 139, 250, ${opacity})`, glow: `rgba(99, 102, 241, ${opacity})` }
-        case 'cyan-blue':
-          return { line: `rgba(34, 211, 238, ${opacity})`, glow: `rgba(37, 99, 235, ${opacity})` }
-        case 'emerald-teal':
-          return { line: `rgba(52, 211, 153, ${opacity})`, glow: `rgba(13, 148, 136, ${opacity})` }
-        case 'rose-amber':
-          return { line: `rgba(244, 63, 94, ${opacity})`, glow: `rgba(245, 158, 11, ${opacity})` }
-        case 'rainbow': {
-          const hue = Math.round(((theta * 180) / Math.PI + time * 0.8) % 360)
-          return { line: `hsla(${hue}, 100%, 65%, ${opacity})`, glow: `hsla(${hue}, 100%, 50%, ${opacity})` }
-        }
-        default:
-          return { line: `rgba(167, 139, 250, ${opacity})`, glow: `rgba(99, 102, 241, ${opacity})` }
-      }
-    }
-
-    const getPoint = (theta: number, time: number, size: number) => {
-      const breath = 1.0 + breathScale * Math.sin(time * 0.05)
-      let x = 0
-      let y = 0
-
-      switch (curveId) {
-        case 'original-thinking': {
-          const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath
-          x = radius * Math.cos(theta + time * 0.015)
-          y = radius * Math.sin(theta + time * 0.015)
-          break
-        }
-        case 'thinking-five': {
-          const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath
-          x = radius * Math.cos(theta - time * 0.012)
-          y = radius * Math.sin(theta - time * 0.012)
-          break
-        }
-        case 'thinking-nine': {
-          const radius = (0.6 + 0.3 * Math.cos(9 * theta)) * breath
-          x = radius * Math.cos(theta + time * 0.01)
-          y = radius * Math.sin(theta + time * 0.01)
-          break
-        }
-        case 'rose-curve': {
-          const radius = Math.cos(5 * theta) * breath
-          x = radius * Math.cos(theta)
-          y = radius * Math.sin(theta)
-          break
-        }
-        default:
-          break
-      }
-
-      return {
-        x: x * (size * 0.35),
-        y: y * (size * 0.35)
-      }
-    }
-
-    const draw = () => {
-      const width = canvas.width / (window.devicePixelRatio || 1)
-      const height = canvas.height / (window.devicePixelRatio || 1)
-      ctx.clearRect(0, 0, width, height)
-
-      if (renderStyle === 'halftone') {
-        ctx.fillStyle = '#000000'
-        ctx.fillRect(0, 0, width, height)
-      }
-
-      const size = Math.min(width, height)
-      const cx = width / 2
-      const cy = height / 2
-
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-
-      if (renderStyle !== 'halftone') {
-        ctx.beginPath()
-        for (let i = 0; i <= 100; i++) {
-          const theta = (i / 100) * Math.PI * 2
-          const pt = getPoint(theta, t, size)
-          if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y)
-          else ctx.lineTo(cx + pt.x, cy + pt.y)
-        }
-        ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.04)' : getThemeColors(theme, 0.06).glow
-        ctx.lineWidth = 0.7
-        ctx.stroke()
-      }
-
-      const headTheta = t * 0.02 * speed
-      const trailRad = (trailLength / 100) * Math.PI
-
-      if (renderStyle === 'glow') {
-        ctx.lineWidth = strokeWidth
-        for (let i = 1; i <= 20; i++) {
-          const ratio = i / 20
-          const thetaStart = headTheta - trailRad * (1 - (i - 1) / 20)
-          const thetaEnd = headTheta - trailRad * (1 - ratio)
-
-          const pt1 = getPoint(thetaStart, t, size)
-          const pt2 = getPoint(thetaEnd, t, size)
-
-          ctx.beginPath()
-          ctx.moveTo(cx + pt1.x, cy + pt1.y)
-          ctx.lineTo(cx + pt2.x, cy + pt2.y)
-
-          const op = ratio
-          const colors = getThemeColors(theme, op, thetaEnd, t)
-          ctx.strokeStyle = colors.line
-          ctx.stroke()
-        }
-      } else if (renderStyle === 'dotted') {
-        for (let i = 1; i <= 20; i++) {
-          const ratio = i / 20
-          const theta = headTheta - trailRad * (1 - ratio)
-          const pt = getPoint(theta, t, size)
-          const colors = getThemeColors(theme, ratio, theta, t)
-          
-          ctx.fillStyle = colors.line
-          ctx.beginPath()
-          ctx.arc(cx + pt.x, cy + pt.y, strokeWidth * 0.5 * ratio, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      } else if (renderStyle === 'halftone') {
-        for (let i = 1; i <= 25; i++) {
-          const ratio = i / 25
-          const theta = headTheta - trailRad * (1 - ratio)
-          const pt = getPoint(theta, t, size)
-          const mod = 0.4 + 0.6 * Math.sin(theta * 6.0)
-          const rad = strokeWidth * 1.2 * ratio * Math.abs(mod)
-
-          ctx.fillStyle = '#ffffff'
-          ctx.beginPath()
-          ctx.arc(cx + pt.x, cy + pt.y, Math.max(0.5, rad), 0, Math.PI * 2)
-          ctx.fill()
-        }
-      } else {
-        ctx.lineWidth = strokeWidth * 0.4
-        for (let i = 1; i <= 25; i++) {
-          const ratio = i / 25
-          const thetaStart = headTheta - trailRad * (1 - (i - 1) / 25)
-          const thetaEnd = headTheta - trailRad * (1 - ratio)
-
-          const pt1 = getPoint(thetaStart, t, size)
-          const pt2 = getPoint(thetaEnd, t, size)
-
-          ctx.beginPath()
-          ctx.moveTo(cx + pt1.x, cy + pt1.y)
-          ctx.lineTo(cx + pt2.x, cy + pt2.y)
-
-          const colors = getThemeColors(theme, ratio * 0.7, thetaEnd, t)
-          ctx.strokeStyle = theme === 'rainbow' ? colors.line : `rgba(255, 255, 255, ${ratio * 0.6})`
-          ctx.stroke()
-        }
-      }
-
-      t += 1
-      animationFrameId = requestAnimationFrame(draw)
-    }
-
-    draw()
-
-    return () => {
-      cancelAnimationFrame(animationFrameId)
-    }
-  }, [curveId, renderStyle, theme, speed, breathScale, trailLength, strokeWidth, glowSize])
-
-  return <canvas ref={canvasRef} className="w-full h-full block" />
-}
-
-function SingleCurveCanvas({ curveId, props, name, equation }: { curveId: string; props: Record<string, any>; name: string; equation: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const renderStyle = props.renderStyle || 'glow'
-  const theme = props.theme || 'purple-indigo'
-  const speed = Number(props.speed ?? 2.0)
-  const breathScale = Number(props.breath ?? 15) / 100
-  const trailLength = Number(props.trailLength ?? 80)
-  const strokeWidth = Number(props.strokeWidth ?? 2.5)
-  const glowSize = Number(props.glowSize ?? 12)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let animationFrameId: number
-    let t = 0
-
-    const resize = () => {
-      const dpr = window.devicePixelRatio || 1
-      canvas.width = canvas.clientWidth * dpr
-      canvas.height = canvas.clientHeight * dpr
-      ctx.scale(dpr, dpr)
-    }
-
-    resize()
-    const resizeObserver = new ResizeObserver(() => {
-      resize()
-    })
-    resizeObserver.observe(canvas)
-
-    const getThemeColors = (themeStr: string, opacity: number, theta = 0, time = 0) => {
-      switch (themeStr) {
-        case 'purple-indigo':
-          return { line: `rgba(167, 139, 250, ${opacity})`, glow: `rgba(99, 102, 241, ${opacity})` }
-        case 'cyan-blue':
-          return { line: `rgba(34, 211, 238, ${opacity})`, glow: `rgba(37, 99, 235, ${opacity})` }
-        case 'emerald-teal':
-          return { line: `rgba(52, 211, 153, ${opacity})`, glow: `rgba(13, 148, 136, ${opacity})` }
-        case 'rose-amber':
-          return { line: `rgba(244, 63, 94, ${opacity})`, glow: `rgba(245, 158, 11, ${opacity})` }
-        case 'rainbow': {
-          const hue = Math.round(((theta * 180) / Math.PI + time * 0.8) % 360)
-          return { line: `hsla(${hue}, 100%, 65%, ${opacity})`, glow: `hsla(${hue}, 100%, 50%, ${opacity})` }
-        }
-        default:
-          return { line: `rgba(167, 139, 250, ${opacity})`, glow: `rgba(99, 102, 241, ${opacity})` }
-      }
-    }
 
     const getPoint = (theta: number, time: number, size: number) => {
       const breath = 1.0 + breathScale * Math.sin(time * 0.05)
@@ -332,6 +119,251 @@ function SingleCurveCanvas({ curveId, props, name, equation }: { curveId: string
           y = r * Math.sin(theta)
           break
         }
+        case 'heart-beat': {
+          const t_eq = theta
+          x = 16 * Math.pow(Math.sin(t_eq), 3)
+          y = -(13 * Math.cos(t_eq) - 5 * Math.cos(2 * t_eq) - 2 * Math.cos(3 * t_eq) - Math.cos(4 * t_eq))
+          x = x * 0.07 * breath
+          y = y * 0.07 * breath
+          break
+        }
+        case 'butterfly-drift': {
+          const r_val = Math.exp(Math.sin(theta)) - 2 * Math.cos(4 * theta) + Math.pow(Math.sin((2 * theta - Math.PI) / 24), 5)
+          x = r_val * Math.cos(theta) * 0.3 * breath
+          y = r_val * Math.sin(theta) * 0.3 * breath
+          break
+        }
+        default:
+          break
+      }
+
+      return {
+        x: x * (size * 0.35),
+        y: y * (size * 0.35)
+      }
+    }
+
+    const draw = () => {
+      const width = canvas.width / (window.devicePixelRatio || 1)
+      const height = canvas.height / (window.devicePixelRatio || 1)
+      ctx.clearRect(0, 0, width, height)
+
+      if (renderStyle === 'halftone') {
+        ctx.fillStyle = '#000000'
+        ctx.fillRect(0, 0, width, height)
+      }
+
+      const size = Math.min(width, height)
+      const cx = width / 2
+      const cy = height / 2
+
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+
+      if (renderStyle !== 'halftone') {
+        ctx.beginPath()
+        for (let i = 0; i <= 100; i++) {
+          const theta = (i / 100) * Math.PI * 2
+          const pt = getPoint(theta, t, size)
+          if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y)
+          else ctx.lineTo(cx + pt.x, cy + pt.y)
+        }
+        ctx.strokeStyle = hexToRgba(glowColor, 0.06)
+        ctx.lineWidth = 0.7
+        ctx.stroke()
+      }
+
+      const headTheta = t * 0.02 * speed
+      const trailRad = (trailLength / 100) * Math.PI
+
+      if (renderStyle === 'glow') {
+        ctx.lineWidth = strokeWidth
+        for (let i = 1; i <= 20; i++) {
+          const ratio = i / 20
+          const thetaStart = headTheta - trailRad * (1 - (i - 1) / 20)
+          const thetaEnd = headTheta - trailRad * (1 - ratio)
+
+          const pt1 = getPoint(thetaStart, t, size)
+          const pt2 = getPoint(thetaEnd, t, size)
+
+          ctx.beginPath()
+          ctx.moveTo(cx + pt1.x, cy + pt1.y)
+          ctx.lineTo(cx + pt2.x, cy + pt2.y)
+
+          ctx.strokeStyle = hexToRgba(lineColor, ratio)
+          ctx.stroke()
+        }
+      } else if (renderStyle === 'dotted') {
+        for (let i = 1; i <= 20; i++) {
+          const ratio = i / 20
+          const theta = headTheta - trailRad * (1 - ratio)
+          const pt = getPoint(theta, t, size)
+          
+          ctx.fillStyle = hexToRgba(lineColor, ratio)
+          ctx.beginPath()
+          ctx.arc(cx + pt.x, cy + pt.y, strokeWidth * 0.5 * ratio, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      } else if (renderStyle === 'halftone') {
+        for (let i = 1; i <= 25; i++) {
+          const ratio = i / 25
+          const theta = headTheta - trailRad * (1 - ratio)
+          const pt = getPoint(theta, t, size)
+          const mod = 0.4 + 0.6 * Math.sin(theta * 6.0)
+          const rad = strokeWidth * 1.2 * ratio * Math.abs(mod)
+
+          ctx.fillStyle = '#ffffff'
+          ctx.beginPath()
+          ctx.arc(cx + pt.x, cy + pt.y, Math.max(0.5, rad), 0, Math.PI * 2)
+          ctx.fill()
+        }
+      } else {
+        ctx.lineWidth = strokeWidth * 0.4
+        for (let i = 1; i <= 25; i++) {
+          const ratio = i / 25
+          const thetaStart = headTheta - trailRad * (1 - (i - 1) / 25)
+          const thetaEnd = headTheta - trailRad * (1 - ratio)
+
+          const pt1 = getPoint(thetaStart, t, size)
+          const pt2 = getPoint(thetaEnd, t, size)
+
+          ctx.beginPath()
+          ctx.moveTo(cx + pt1.x, cy + pt1.y)
+          ctx.lineTo(cx + pt2.x, cy + pt2.y)
+
+          ctx.strokeStyle = hexToRgba(lineColor, ratio * 0.6)
+          ctx.stroke()
+        }
+      }
+
+      t += 1
+      animationFrameId = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    return () => {
+      cancelAnimationFrame(animationFrameId)
+    }
+  }, [curveId, renderStyle, lineColor, glowColor, speed, breathScale, trailLength, strokeWidth, glowSize])
+
+  return <canvas ref={canvasRef} className="w-full h-full block" />
+}
+
+function SingleCurveCanvas({ curveId, props, name, equation, onClick, isLarge }: { curveId: string; props: Record<string, any>; name: string; equation: string; onClick?: () => void; isLarge?: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const renderStyle = props.renderStyle || 'halftone'
+  const lineColor = props.lineColor || '#ffffff'
+  const glowColor = props.glowColor || '#ffffff'
+  const speed = Number(props.speed ?? 2.0)
+  const breathScale = Number(props.breath ?? 15) / 100
+  const trailLength = Number(props.trailLength ?? 80)
+  const strokeWidth = Number(props.strokeWidth ?? 2.5)
+  const glowSize = Number(props.glowSize ?? 12)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animationFrameId: number
+    let t = 0
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = canvas.clientWidth * dpr
+      canvas.height = canvas.clientHeight * dpr
+      ctx.scale(dpr, dpr)
+    }
+
+    resize()
+    const resizeObserver = new ResizeObserver(() => {
+      resize()
+    })
+    resizeObserver.observe(canvas)
+
+    const getPoint = (theta: number, time: number, size: number) => {
+      const breath = 1.0 + breathScale * Math.sin(time * 0.05)
+      let x = 0
+      let y = 0
+
+      switch (curveId) {
+        case 'original-thinking': {
+          const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath
+          x = radius * Math.cos(theta + time * 0.015)
+          y = radius * Math.sin(theta + time * 0.015)
+          break
+        }
+        case 'thinking-five': {
+          const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath
+          x = radius * Math.cos(theta - time * 0.012)
+          y = radius * Math.sin(theta - time * 0.012)
+          break
+        }
+        case 'thinking-nine': {
+          const radius = (0.6 + 0.3 * Math.cos(9 * theta)) * breath
+          x = radius * Math.cos(theta + time * 0.01)
+          y = radius * Math.sin(theta + time * 0.01)
+          break
+        }
+        case 'rose-curve': {
+          const radius = Math.cos(5 * theta) * breath
+          x = radius * Math.cos(theta)
+          y = radius * Math.sin(theta)
+          break
+        }
+        case 'rose-two': {
+          const radius = Math.cos(2 * theta) * breath
+          x = radius * Math.cos(theta)
+          y = radius * Math.sin(theta)
+          break
+        }
+        case 'rose-four': {
+          const radius = Math.cos(4 * theta) * breath
+          x = radius * Math.cos(theta)
+          y = radius * Math.sin(theta)
+          break
+        }
+        case 'lissajous': {
+          x = Math.sin(3 * theta + time * 0.03) * breath
+          y = Math.sin(4 * theta) * breath
+          break
+        }
+        case 'lemniscate': {
+          const denom = 1 + Math.sin(theta) * Math.sin(theta)
+          x = (Math.cos(theta) / denom) * 1.2 * breath
+          y = (Math.sin(theta) * Math.cos(theta) / denom) * 1.2 * breath
+          break
+        }
+        case 'spirograph': {
+          const r_inner = 0.45
+          const d_dist = 0.38
+          x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath
+          y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath
+          break
+        }
+        case 'spiral': {
+          const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath
+          const r = base_r + 0.3 * Math.cos(3 * theta)
+          x = r * Math.cos(theta)
+          y = r * Math.sin(theta)
+          break
+        }
+        case 'heart-beat': {
+          const t_eq = theta
+          x = 16 * Math.pow(Math.sin(t_eq), 3)
+          y = -(13 * Math.cos(t_eq) - 5 * Math.cos(2 * t_eq) - 2 * Math.cos(3 * t_eq) - Math.cos(4 * t_eq))
+          x = x * 0.07 * breath
+          y = y * 0.07 * breath
+          break
+        }
+        case 'butterfly-drift': {
+          const r_val = Math.exp(Math.sin(theta)) - 2 * Math.cos(4 * theta) + Math.pow(Math.sin((2 * theta - Math.PI) / 24), 5)
+          x = r_val * Math.cos(theta) * 0.3 * breath
+          y = r_val * Math.sin(theta) * 0.3 * breath
+          break
+        }
         default:
           break
       }
@@ -368,7 +400,7 @@ function SingleCurveCanvas({ curveId, props, name, equation }: { curveId: string
           if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y)
           else ctx.lineTo(cx + pt.x, cy + pt.y)
         }
-        ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.05)' : getThemeColors(theme, 0.07).glow
+        ctx.strokeStyle = hexToRgba(glowColor, 0.07)
         ctx.lineWidth = 1
         ctx.stroke()
       }
@@ -397,8 +429,7 @@ function SingleCurveCanvas({ curveId, props, name, equation }: { curveId: string
             ctx.lineTo(cx + pt2.x, cy + pt2.y)
 
             const op = ratio * opacityScale
-            const colors = getThemeColors(theme, op, thetaEnd, t)
-            ctx.strokeStyle = colors.line
+            ctx.strokeStyle = hexToRgba(lineColor, op)
             ctx.stroke()
           }
         })
@@ -407,14 +438,13 @@ function SingleCurveCanvas({ curveId, props, name, equation }: { curveId: string
           const ratio = i / 45
           const theta = headTheta - trailRad * (1 - ratio)
           const pt = getPoint(theta, t, size)
-          const colors = getThemeColors(theme, ratio, theta, t)
           
-          ctx.fillStyle = theme === 'rainbow' ? colors.glow : getThemeColors(theme, ratio * 0.3, theta, t).glow
+          ctx.fillStyle = hexToRgba(glowColor, ratio * 0.3)
           ctx.beginPath()
           ctx.arc(cx + pt.x, cy + pt.y, strokeWidth * ratio + glowSize * 0.2 * ratio, 0, Math.PI * 2)
           ctx.fill()
 
-          ctx.fillStyle = colors.line
+          ctx.fillStyle = hexToRgba(lineColor, ratio)
           ctx.beginPath()
           ctx.arc(cx + pt.x, cy + pt.y, strokeWidth * 0.6 * ratio, 0, Math.PI * 2)
           ctx.fill()
@@ -447,21 +477,19 @@ function SingleCurveCanvas({ curveId, props, name, equation }: { curveId: string
           ctx.lineTo(cx + pt2.x, cy + pt2.y)
 
           const op = ratio * 0.8
-          const colors = getThemeColors(theme, op, thetaEnd, t)
-          ctx.strokeStyle = theme === 'rainbow' ? colors.line : `rgba(255, 255, 255, ${op})`
+          ctx.strokeStyle = hexToRgba(lineColor, op)
           ctx.stroke()
         }
       }
 
       if (renderStyle !== 'halftone') {
         const headPt = getPoint(headTheta, t, size)
-        const colors = getThemeColors(theme, 1.0, headTheta, t)
 
         const glowGrad = ctx.createRadialGradient(
           cx + headPt.x, cy + headPt.y, 0,
           cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2
         )
-        glowGrad.addColorStop(0, colors.line)
+        glowGrad.addColorStop(0, hexToRgba(lineColor, 1.0))
         glowGrad.addColorStop(1, 'rgba(0,0,0,0)')
         ctx.fillStyle = glowGrad
         ctx.beginPath()
@@ -484,26 +512,32 @@ function SingleCurveCanvas({ curveId, props, name, equation }: { curveId: string
       resizeObserver.disconnect()
       cancelAnimationFrame(animationFrameId)
     }
-  }, [curveId, renderStyle, theme, speed, breathScale, trailLength, strokeWidth, glowSize])
+  }, [curveId, renderStyle, lineColor, glowColor, speed, breathScale, trailLength, strokeWidth, glowSize])
 
   return (
-    <div className={cn(
-      "relative rounded-xl border border-zinc-900 overflow-hidden flex flex-col justify-between items-center p-3 text-center transition-all duration-300",
-      renderStyle === 'halftone' ? 'bg-black border-zinc-950 shadow-inner' : 'bg-zinc-950/40 hover:bg-zinc-950/70 border-zinc-900/60 hover:border-zinc-800'
-    )}>
-      <div className="w-full aspect-square flex items-center justify-center relative">
-        <canvas ref={canvasRef} className="w-[100px] h-[100px] sm:w-[135px] sm:h-[135px] block" />
+    <div
+      onClick={onClick}
+      className={cn(
+        "relative rounded-xl border border-zinc-900 overflow-hidden flex flex-col justify-between items-center p-3 text-center transition-all duration-300",
+        isLarge ? "border-0 bg-transparent w-full max-w-[320px] h-auto" : (renderStyle === 'halftone' ? 'bg-black border-zinc-950 shadow-inner' : 'bg-zinc-950/40 hover:bg-zinc-950/70 border-zinc-900/60 hover:border-zinc-800'),
+        onClick && "cursor-pointer hover:border-primary/50 hover:bg-zinc-950/80 hover:shadow-lg hover:shadow-primary/[0.02]"
+      )}
+    >
+      <div className={cn("flex items-center justify-center relative", isLarge ? "w-[220px] h-[220px] sm:w-[280px] sm:h-[280px]" : "w-[100px] h-[100px] sm:w-[135px] sm:h-[135px]")}>
+        <canvas ref={canvasRef} className="w-full h-full block" />
       </div>
       
-      <div className="mt-2 text-left w-full border-t border-zinc-900/40 pt-2">
-        <div className="text-[11px] font-bold text-zinc-200 tracking-wide leading-none">{name}</div>
-        <div className="text-[9px] font-mono text-zinc-500 mt-1 select-all">{equation}</div>
-      </div>
+      {!isLarge && (
+        <div className="mt-2 text-left w-full border-t border-zinc-900/40 pt-2">
+          <div className="text-[11px] font-bold text-zinc-200 tracking-wide leading-none">{name}</div>
+          <div className="text-[9px] font-mono text-zinc-500 mt-1 select-all">{equation}</div>
+        </div>
+      )}
     </div>
   )
 }
 
-function MathCurvePackPreview({ props }: { props: Record<string, any> }) {
+function MathCurvePackPreview({ props, onSelect }: { props: Record<string, any>; onSelect?: (id: string) => void }) {
   const isCompact = !!props.isCompact
 
   const loaders = [
@@ -516,7 +550,9 @@ function MathCurvePackPreview({ props }: { props: Record<string, any> }) {
     { id: 'lissajous', name: 'Lissajous Drift', eq: 'X = SIN(3θ), Y = SIN(4θ)' },
     { id: 'lemniscate', name: 'Lemniscate Bloom', eq: 'Bernoulli Lemniscate' },
     { id: 'spirograph', name: 'Hypotrochoid Loop', eq: 'Inner Spirograph' },
-    { id: 'spiral', name: 'Three-Petal Spiral', eq: 'R = θ/(2π) + 0.3*COS(3θ)' }
+    { id: 'spiral', name: 'Three-Petal Spiral', eq: 'R = θ/(2π) + 0.3*COS(3θ)' },
+    { id: 'heart-beat', name: 'Cardioid Heart', eq: 'X = 16*SIN³θ, Y = -(13*COSθ - 5*COS2θ - ...)' },
+    { id: 'butterfly-drift', name: 'Butterfly Drift', eq: 'R = e^SINθ - 2*COS4θ + SIN⁵(...)' }
   ]
 
   if (isCompact) {
@@ -541,6 +577,7 @@ function MathCurvePackPreview({ props }: { props: Record<string, any> }) {
             props={props}
             name={loader.name}
             equation={loader.eq}
+            onClick={() => onSelect?.(loader.id)}
           />
         ))}
       </div>
@@ -548,10 +585,36 @@ function MathCurvePackPreview({ props }: { props: Record<string, any> }) {
   )
 }
 
-// Dynamic component preview renderer to display selected states
-function LivePreviewRenderer({ item, props }: { item: ComponentItem; props: Record<string, any> }) {
+function LivePreviewRenderer({ item, props, selectedSubLoader, onSelectSubLoader }: { item: ComponentItem; props: Record<string, any>; selectedSubLoader?: string | null; onSelectSubLoader?: (id: string | null) => void }) {
   if (item.id === 'math-curve-pack') {
-    return <MathCurvePackPreview props={props} />
+    if (selectedSubLoader) {
+      const loaders = [
+        { id: 'original-thinking', name: 'Original Thinking', eq: 'R = 1 + 0.35 * COS(7θ)' },
+        { id: 'thinking-five', name: 'Thinking Five', eq: 'R = 1 + 0.25 * COS(5θ)' },
+        { id: 'thinking-nine', name: 'Thinking Nine', eq: 'R = 1 + 0.3 * COS(9θ)' },
+        { id: 'rose-curve', name: 'Rose Curve', eq: 'R = COS(5θ)' },
+        { id: 'rose-two', name: 'Rose Two', eq: 'R = COS(2θ)' },
+        { id: 'rose-four', name: 'Rose Four', eq: 'R = COS(4θ)' },
+        { id: 'lissajous', name: 'Lissajous Drift', eq: 'X = SIN(3θ), Y = SIN(4θ)' },
+        { id: 'lemniscate', name: 'Lemniscate Bloom', eq: 'Bernoulli Lemniscate' },
+        { id: 'spirograph', name: 'Hypotrochoid Loop', eq: 'Inner Spirograph' },
+        { id: 'spiral', name: 'Three-Petal Spiral', eq: 'R = θ/(2π) + 0.3*COS(3θ)' },
+        { id: 'heart-beat', name: 'Cardioid Heart', eq: 'X = 16*SIN³θ, Y = -(13*COSθ - 5*COS2θ - ...)' },
+        { id: 'butterfly-drift', name: 'Butterfly Drift', eq: 'R = e^SINθ - 2*COS4θ + SIN⁵(...)' }
+      ]
+      const loader = loaders.find(l => l.id === selectedSubLoader) || loaders[0]
+      return (
+        <SingleCurveCanvas
+          curveId={selectedSubLoader}
+          props={props}
+          name={loader.name}
+          equation={loader.eq}
+          isLarge={true}
+        />
+      )
+    } else {
+      return <MathCurvePackPreview props={props} onSelect={onSelectSubLoader} />
+    }
   }
 
   if (item.id === 'gradient-glow-btn') {
@@ -757,6 +820,7 @@ export function MarketplaceView() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [activeItem, setActiveItem] = useState<ComponentItem | null>(null)
+  const [selectedSubLoader, setSelectedSubLoader] = useState<string | null>(null)
   
   // Customizer state
   const [customProps, setCustomProps] = useState<Record<string, any>>({})
@@ -780,6 +844,7 @@ export function MarketplaceView() {
     })
     setCustomProps(defaults)
     setCopied(false)
+    setSelectedSubLoader(null)
   }
 
   const handlePropChange = (id: string, val: any) => {
@@ -912,169 +977,253 @@ export function MarketplaceView() {
         <div className="space-y-4">
           {/* Top Return Header */}
           <button
-            onClick={() => setActiveItem(null)}
+            onClick={() => {
+              setActiveItem(null)
+              setSelectedSubLoader(null)
+            }}
             className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 font-medium group transition-colors duration-200 mb-2"
           >
             <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform duration-200" /> Back to library
           </button>
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-            {/* Left Screen: Live Interactive Canvas */}
-            <div className="space-y-4">
-              <div className="relative flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-950/20 overflow-hidden shadow-2xl">
-                {/* Visual Canvas Info Header */}
-                <div className="flex items-center justify-between border-b border-zinc-900/80 bg-zinc-950/60 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                    <span className="text-xs font-bold text-zinc-200 tracking-wide font-mono">Live Interactive Preview</span>
-                  </div>
-                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">scale: 100%</span>
-                </div>
-                
-                {/* Visual Workspace Canvas Frame */}
-                <div className="flex min-h-[300px] items-center justify-center p-12 bg-zinc-900/30 chequered-pattern relative overflow-hidden">
-                  <LivePreviewRenderer item={activeItem} props={customProps} />
-                </div>
+          {activeItem.id === 'math-curve-pack' && selectedSubLoader === null ? (
+            /* Mathematical Curve Loader Pack Gallery */
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex flex-col gap-2">
+                <h2 className="text-xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
+                  <Grid className="h-5 w-5 text-primary animate-pulse" /> Mathematical Curve Loader Pack
+                </h2>
+                <p className="text-sm text-zinc-400 max-w-3xl leading-relaxed">
+                  Explore organic, high-performance mathematical loaders rendered dynamically in real-time. Choose a curve pattern below to inspect parameters, adjust styles/colors, and copy generated code.
+                </p>
               </div>
 
-              {/* Code Box Pane */}
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between border-b border-zinc-900 bg-zinc-950/80 px-4 py-2.5">
-                  <div className="flex items-center gap-1">
-                    <Code className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-bold text-zinc-300 font-mono">Source Code</span>
-                  </div>
-                  
-                  {/* Select Tailwind / CSS Tabs */}
-                  <div className="flex rounded-lg bg-zinc-900 p-0.5 border border-zinc-800">
-                    <button
-                      onClick={() => setCodeTab('tailwind')}
-                      className={cn(
-                        "px-2.5 py-1 text-[10px] font-bold tracking-wide rounded-md transition-all duration-200",
-                        codeTab === 'tailwind'
-                          ? "bg-zinc-800 text-zinc-100 shadow"
-                          : "text-zinc-400 hover:text-zinc-200"
-                      )}
-                    >
-                      React + Tailwind
-                    </button>
-                    <button
-                      onClick={() => setCodeTab('css')}
-                      className={cn(
-                        "px-2.5 py-1 text-[10px] font-bold tracking-wide rounded-md transition-all duration-200",
-                        codeTab === 'css'
-                          ? "bg-zinc-800 text-zinc-100 shadow"
-                          : "text-zinc-400 hover:text-zinc-200"
-                      )}
-                    >
-                      HTML &amp; CSS
-                    </button>
-                  </div>
-                </div>
-
-                {/* Highlighted text container */}
-                <div className="relative flex-1 font-mono text-xs bg-zinc-950 p-4 overflow-x-auto max-h-[320px] scrollbar-thin text-zinc-300">
-                  <pre className="text-[11px] leading-relaxed select-text">
-                    {codeTab === 'tailwind' ? generatedCodes.tailwind : generatedCodes.css}
-                  </pre>
-                  
-                  <button
-                    onClick={() => copyCodeToClipboard(codeTab === 'tailwind' ? generatedCodes.tailwind : generatedCodes.css)}
-                    className={cn(
-                      "absolute top-3 right-3 p-2 rounded-lg border text-zinc-300 transition-all duration-200",
-                      copied
-                        ? "bg-emerald-500/25 border-emerald-500 text-emerald-400"
-                        : "bg-zinc-900 hover:bg-zinc-800 border-zinc-850 hover:border-zinc-700"
-                    )}
-                  >
-                    {copied ? (
-                      <span className="flex items-center gap-1 text-[10px] font-bold">
-                        <Check className="h-3.5 w-3.5" /> Copied!
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-[10px] font-bold">
-                        <Copy className="h-3.5 w-3.5" /> Copy Code
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Screen: Property Customizer Panel */}
-            <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/65 p-5 shadow-xl space-y-6">
-              <div className="space-y-1.5 border-b border-zinc-900 pb-4">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-primary font-mono">{activeItem.category}</span>
-                <h2 className="text-lg font-extrabold text-zinc-100 leading-snug">{activeItem.name}</h2>
-                <p className="text-xs text-zinc-400 font-light leading-relaxed">{activeItem.description}</p>
-              </div>
-
-              <div className="space-y-5">
-                <div className="flex items-center gap-2 text-zinc-300 font-bold text-xs">
-                  <Sliders className="h-3.5 w-3.5 text-primary" />
-                  <span>Configure Attributes</span>
-                </div>
-                
-                {/* Dynamically render property form fields */}
-                {activeItem.props.map((p) => (
-                  <div key={p.id} className="space-y-2">
-                    <label className="text-xs font-semibold text-zinc-300 flex justify-between">
-                      <span>{p.name}</span>
-                      {p.type === 'number' && <span className="text-zinc-500 font-mono">{customProps[p.id]}</span>}
-                    </label>
-                    
-                    {p.type === 'text' && (
-                      <Input
-                        type="text"
-                        value={customProps[p.id] || ''}
-                        onChange={(e) => handlePropChange(p.id, e.target.value)}
-                        className="bg-zinc-900 border-zinc-850 text-zinc-200 placeholder-zinc-650 h-9 rounded-lg"
-                      />
-                    )}
-
-                    {p.type === 'select' && (
-                      <select
-                        value={customProps[p.id] || ''}
-                        onChange={(e) => handlePropChange(p.id, e.target.value)}
-                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-850 rounded-lg text-xs font-semibold text-zinc-200 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45"
-                      >
-                        {p.options?.map((opt) => (
-                          <option key={opt} value={opt} className="bg-zinc-950 font-semibold">{opt}</option>
-                        ))}
-                      </select>
-                    )}
-
-                    {p.type === 'boolean' && (
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={!!customProps[p.id]}
-                          onChange={(e) => handlePropChange(p.id, e.target.checked)}
-                          id={`chk-${p.id}`}
-                          className="h-4.5 w-4.5 rounded border-zinc-800 text-primary bg-zinc-900 focus:ring-primary/40 focus:ring-offset-zinc-950 cursor-pointer"
-                        />
-                        <label htmlFor={`chk-${p.id}`} className="ml-2.5 text-xs text-zinc-400 select-none cursor-pointer">
-                          Enable {p.name.toLowerCase()}
-                        </label>
-                      </div>
-                    )}
-
-                    {p.type === 'number' && (
-                      <input
-                        type="range"
-                        min={p.min ?? 0}
-                        max={p.max ?? 100}
-                        step={p.step ?? 1}
-                        value={customProps[p.id] ?? p.default}
-                        onChange={(e) => handlePropChange(p.id, Number(e.target.value))}
-                        className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-primary"
-                      />
-                    )}
-                  </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
+                {[
+                  { id: 'original-thinking', name: 'Original Thinking', eq: 'R = 1 + 0.35 * COS(7θ)' },
+                  { id: 'thinking-five', name: 'Thinking Five', eq: 'R = 1 + 0.25 * COS(5θ)' },
+                  { id: 'thinking-nine', name: 'Thinking Nine', eq: 'R = 1 + 0.3 * COS(9θ)' },
+                  { id: 'rose-curve', name: 'Rose Curve', eq: 'R = COS(5θ)' },
+                  { id: 'rose-two', name: 'Rose Two', eq: 'R = COS(2θ)' },
+                  { id: 'rose-four', name: 'Rose Four', eq: 'R = COS(4θ)' },
+                  { id: 'lissajous', name: 'Lissajous Drift', eq: 'X = SIN(3θ), Y = SIN(4θ)' },
+                  { id: 'lemniscate', name: 'Lemniscate Bloom', eq: 'Bernoulli Lemniscate' },
+                  { id: 'spirograph', name: 'Hypotrochoid Loop', eq: 'Inner Spirograph' },
+                  { id: 'spiral', name: 'Three-Petal Spiral', eq: 'R = θ/(2π) + 0.3*COS(3θ)' },
+                  { id: 'heart-beat', name: 'Cardioid Heart', eq: 'X = 16*SIN³θ, Y = -(13*COSθ - 5*COS2θ - ...)' },
+                  { id: 'butterfly-drift', name: 'Butterfly Drift', eq: 'R = e^SINθ - 2*COS4θ + SIN⁵(...)' }
+                ].map((loader) => (
+                  <SingleCurveCanvas
+                    key={loader.id}
+                    curveId={loader.id}
+                    props={customProps}
+                    name={loader.name}
+                    equation={loader.eq}
+                    onClick={() => {
+                      setSelectedSubLoader(loader.id)
+                      handlePropChange('exportCurve', loader.id)
+                    }}
+                  />
                 ))}
               </div>
-            </aside>
-          </div>
+            </div>
+          ) : (
+            /* STANDARD SPLIT CUSTOMIZER WORKSPACE */
+            <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+              {/* Left Screen: Live Interactive Canvas */}
+              <div className="space-y-4">
+                <div className="relative flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-950/20 overflow-hidden shadow-2xl">
+                  {/* Visual Canvas Info Header */}
+                  <div className="flex items-center justify-between border-b border-zinc-900/80 bg-zinc-950/60 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {activeItem.id === 'math-curve-pack' && (
+                        <button
+                          onClick={() => setSelectedSubLoader(null)}
+                          className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/80 transition-colors mr-2 border border-primary/20 bg-primary/5 rounded px-2 py-0.5 font-mono"
+                        >
+                          ← Gallery
+                        </button>
+                      )}
+                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                      <span className="text-xs font-bold text-zinc-200 tracking-wide font-mono">Live Interactive Preview</span>
+                    </div>
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">scale: 100%</span>
+                  </div>
+                  
+                  {/* Visual Workspace Canvas Frame */}
+                  <div className="flex min-h-[300px] items-center justify-center p-12 bg-zinc-900/30 chequered-pattern relative overflow-hidden">
+                    <LivePreviewRenderer item={activeItem} props={customProps} selectedSubLoader={selectedSubLoader} />
+                  </div>
+                </div>
+
+                {/* Code Box Pane */}
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 overflow-hidden flex flex-col">
+                  <div className="flex items-center justify-between border-b border-zinc-900 bg-zinc-950/80 px-4 py-2.5">
+                    <div className="flex items-center gap-1">
+                      <Code className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-bold text-zinc-300 font-mono">Source Code</span>
+                    </div>
+                    
+                    {/* Select Tailwind / CSS Tabs */}
+                    <div className="flex rounded-lg bg-zinc-900 p-0.5 border border-zinc-800">
+                      <button
+                        onClick={() => setCodeTab('tailwind')}
+                        className={cn(
+                          "px-2.5 py-1 text-[10px] font-bold tracking-wide rounded-md transition-all duration-200",
+                          codeTab === 'tailwind'
+                            ? "bg-zinc-800 text-zinc-100 shadow"
+                            : "text-zinc-400 hover:text-zinc-200"
+                        )}
+                      >
+                        React + Tailwind
+                      </button>
+                      <button
+                        onClick={() => setCodeTab('css')}
+                        className={cn(
+                          "px-2.5 py-1 text-[10px] font-bold tracking-wide rounded-md transition-all duration-200",
+                          codeTab === 'css'
+                            ? "bg-zinc-800 text-zinc-100 shadow"
+                            : "text-zinc-400 hover:text-zinc-200"
+                        )}
+                      >
+                        HTML &amp; CSS
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Highlighted text container */}
+                  <div className="relative flex-1 font-mono text-xs bg-zinc-950 p-4 overflow-x-auto max-h-[320px] scrollbar-thin text-zinc-300">
+                    <pre className="text-[11px] leading-relaxed select-text">
+                      {codeTab === 'tailwind' ? generatedCodes.tailwind : generatedCodes.css}
+                    </pre>
+                    
+                    <button
+                      onClick={() => copyCodeToClipboard(codeTab === 'tailwind' ? generatedCodes.tailwind : generatedCodes.css)}
+                      className={cn(
+                        "absolute top-3 right-3 p-2 rounded-lg border text-zinc-300 transition-all duration-200",
+                        copied
+                          ? "bg-emerald-500/25 border-emerald-500 text-emerald-400"
+                          : "bg-zinc-900 hover:bg-zinc-800 border-zinc-850 hover:border-zinc-700"
+                      )}
+                    >
+                      {copied ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold">
+                          <Check className="h-3.5 w-3.5" /> Copied!
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] font-bold">
+                          <Copy className="h-3.5 w-3.5" /> Copy Code
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Screen: Property Customizer Panel */}
+              <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/65 p-5 shadow-xl space-y-6">
+                <div className="space-y-1.5 border-b border-zinc-900 pb-4">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-primary font-mono">{activeItem.category}</span>
+                  <h2 className="text-lg font-extrabold text-zinc-100 leading-snug">{activeItem.name}</h2>
+                  <p className="text-xs text-zinc-400 font-light leading-relaxed">{activeItem.description}</p>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="flex items-center gap-2 text-zinc-300 font-bold text-xs">
+                    <Sliders className="h-3.5 w-3.5 text-primary" />
+                    <span>Configure Attributes</span>
+                  </div>
+                  
+                  {/* Dynamically render property form fields */}
+                  {activeItem.props.filter((p) => p.id !== 'exportCurve').map((p) => (
+                    <div key={p.id} className="space-y-2">
+                      <label className="text-xs font-semibold text-zinc-300 flex justify-between">
+                        <span>{p.name}</span>
+                        {p.type === 'number' && <span className="text-zinc-500 font-mono">{customProps[p.id]}</span>}
+                      </label>
+                      
+                      {p.type === 'text' && (
+                        <Input
+                          type="text"
+                          value={customProps[p.id] || ''}
+                          onChange={(e) => handlePropChange(p.id, e.target.value)}
+                          className="bg-zinc-900 border-zinc-850 text-zinc-200 placeholder-zinc-650 h-9 rounded-lg"
+                        />
+                      )}
+
+                      {p.type === 'select' && (
+                        <select
+                          value={customProps[p.id] || ''}
+                          onChange={(e) => handlePropChange(p.id, e.target.value)}
+                          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-850 rounded-lg text-xs font-semibold text-zinc-200 focus:outline-none focus:ring-1 focus:ring-primary/45 focus:border-primary/45"
+                        >
+                          {p.options?.map((opt) => (
+                            <option key={opt} value={opt} className="bg-zinc-950 font-semibold">{opt}</option>
+                          ))}
+                        </select>
+                      )}
+
+                      {p.type === 'color' && (
+                        <div className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-850/80 px-3 py-2 rounded-xl hover:border-zinc-800 transition-colors">
+                          <div className="relative w-9 h-9 rounded-full p-[2px] bg-gradient-to-tr from-rose-500 via-yellow-500 to-cyan-500 shadow-lg cursor-pointer group active:scale-95 transition-all">
+                            <div className="w-full h-full rounded-full bg-zinc-950 p-[2px]">
+                              <div
+                                className="w-full h-full rounded-full shadow-inner relative"
+                                style={{ backgroundColor: customProps[p.id] || p.default }}
+                              >
+                                <input
+                                  type="color"
+                                  value={customProps[p.id] || p.default}
+                                  onChange={(e) => handlePropChange(p.id, e.target.value)}
+                                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex-grow">
+                            <input
+                              type="text"
+                              value={customProps[p.id] || p.default}
+                              onChange={(e) => handlePropChange(p.id, e.target.value)}
+                              className="bg-transparent border-0 p-0 text-xs font-mono font-bold text-zinc-200 focus:ring-0 w-20 uppercase"
+                            />
+                            <p className="text-[9px] text-zinc-500 font-medium">Click circle to open color picker</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {p.type === 'boolean' && (
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={!!customProps[p.id]}
+                            onChange={(e) => handlePropChange(p.id, e.target.checked)}
+                            id={`chk-${p.id}`}
+                            className="h-4.5 w-4.5 rounded border-zinc-800 text-primary bg-zinc-900 focus:ring-primary/40 focus:ring-offset-zinc-950 cursor-pointer"
+                          />
+                          <label htmlFor={`chk-${p.id}`} className="ml-2.5 text-xs text-zinc-400 select-none cursor-pointer">
+                            Enable {p.name.toLowerCase()}
+                          </label>
+                        </div>
+                      )}
+
+                      {p.type === 'number' && (
+                        <input
+                          type="range"
+                          min={p.min ?? 0}
+                          max={p.max ?? 100}
+                          step={p.step ?? 1}
+                          value={customProps[p.id] ?? p.default}
+                          onChange={(e) => handlePropChange(p.id, Number(e.target.value))}
+                          className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-primary"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </aside>
+            </div>
+          )}
         </div>
       )}
     </div>

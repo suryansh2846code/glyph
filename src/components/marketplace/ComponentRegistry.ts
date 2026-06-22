@@ -1,7 +1,7 @@
 export interface ComponentProp {
   id: string
   name: string
-  type: 'select' | 'text' | 'number' | 'boolean'
+  type: 'select' | 'text' | 'number' | 'boolean' | 'color'
   default: any
   options?: string[]
   min?: number
@@ -837,12 +837,13 @@ export default function CyberSkeleton() {
   {
     id: 'math-curve-pack',
     name: 'Mathematical Curve Loader Pack',
-    description: 'A showcase of 10 organic, high-performance mathematical loaders (Rose curves, Lissajous, Lemniscate, Spirographs, and Cosine Rings) animating in a unified grid.',
+    description: 'A showcase of 12 organic, high-performance mathematical loaders (Rose curves, Lissajous, Lemniscate, Heart, Butterfly, and Cosine Rings) animating in a unified grid.',
     category: 'feedback',
     props: [
-      { id: 'renderStyle', name: 'Render Styling', type: 'select', default: 'glow', options: ['glow', 'dotted', 'halftone', 'minimalist'] },
-      { id: 'theme', name: 'Glow Hue Theme', type: 'select', default: 'purple-indigo', options: ['purple-indigo', 'cyan-blue', 'emerald-teal', 'rose-amber', 'rainbow'] },
-      { id: 'exportCurve', name: 'Select Loader to Export', type: 'select', default: 'rose-curve', options: ['original-thinking', 'thinking-five', 'rose-curve', 'rose-two', 'rose-four', 'lissajous', 'lemniscate', 'spirograph', 'spiral'] },
+      { id: 'renderStyle', name: 'Render Styling', type: 'select', default: 'halftone', options: ['glow', 'dotted', 'halftone', 'minimalist'] },
+      { id: 'lineColor', name: 'Primary Line Color', type: 'color', default: '#ffffff' },
+      { id: 'glowColor', name: 'Glow Accent Color', type: 'color', default: '#ffffff' },
+      { id: 'exportCurve', name: 'Select Loader to Export', type: 'select', default: 'rose-curve', options: ['original-thinking', 'thinking-five', 'thinking-nine', 'rose-curve', 'rose-two', 'rose-four', 'lissajous', 'lemniscate', 'spirograph', 'spiral', 'heart-beat', 'butterfly-drift'] },
       { id: 'speed', name: 'Trace Speed multiplier', type: 'number', default: 2.0, min: 0.5, max: 5.0, step: 0.1 },
       { id: 'breath', name: 'Pulse breathing size (%)', type: 'number', default: 15, min: 0, max: 40, step: 1 },
       { id: 'trailLength', name: 'Trail Length (%)', type: 'number', default: 80, min: 20, max: 200, step: 5 },
@@ -850,27 +851,16 @@ export default function CyberSkeleton() {
       { id: 'glowSize', name: 'Neon Glow Size', type: 'number', default: 12, min: 0, max: 25, step: 1 }
     ],
     generateCode: (props) => {
-      const { renderStyle, theme, exportCurve, speed, breath, trailLength, strokeWidth, glowSize } = props
+      const { renderStyle, lineColor, glowColor, exportCurve, speed, breath, trailLength, strokeWidth, glowSize } = props
       
-      const themeColorsJS = `const getThemeColors = (theme, opacity, theta = 0, t = 0) => {
-    switch (theme) {
-      case 'purple-indigo':
-        return { line: \`rgba(167, 139, 250, \${opacity})\`, glow: \`rgba(99, 102, 241, \${opacity})\` };
-      case 'cyan-blue':
-        return { line: \`rgba(34, 211, 238, \${opacity})\`, glow: \`rgba(37, 99, 235, \${opacity})\` };
-      case 'emerald-teal':
-        return { line: \`rgba(52, 211, 153, \${opacity})\`, glow: \`rgba(13, 148, 136, \${opacity})\` };
-      case 'rose-amber':
-        return { line: \`rgba(244, 63, 94, \${opacity})\`, glow: \`rgba(245, 158, 11, \${opacity})\` };
-      case 'rainbow': {
-        const hue = Math.round(((theta * 180) / Math.PI + t * 0.8) % 360);
-        return { line: \`hsla(\${hue}, 100%, 65%, \${opacity})\`, glow: \`hsla(\${hue}, 100%, 50%, \${opacity})\` };
-      }
-      default:
-        return { line: \`rgba(167, 139, 250, \${opacity})\`, glow: \`rgba(99, 102, 241, \${opacity})\` };
-    }
+      const hexToRgbaJS = `const hexToRgba = (hex, alpha) => {
+    let c = hex.substring(1);
+    if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+    const num = parseInt(c, 16);
+    return \`rgba(\${(num >> 16) & 255}, \${(num >> 8) & 255}, \${num & 255}, \${alpha})\`;
   };`
 
+      // Define mathematical curve equations
       let curveFormulaJS = ''
       if (exportCurve === 'original-thinking') {
         curveFormulaJS = `const radius = (0.6 + 0.3 * Math.cos(7 * theta)) * breath;
@@ -880,6 +870,10 @@ export default function CyberSkeleton() {
         curveFormulaJS = `const radius = (0.65 + 0.25 * Math.cos(5 * theta)) * breath;
       x = radius * Math.cos(theta - time * 0.012);
       y = radius * Math.sin(theta - time * 0.012);`
+      } else if (exportCurve === 'thinking-nine') {
+        curveFormulaJS = `const radius = (0.6 + 0.3 * Math.cos(9 * theta)) * breath;
+      x = radius * Math.cos(theta + time * 0.01);
+      y = radius * Math.sin(theta + time * 0.01);`
       } else if (exportCurve === 'rose-curve') {
         curveFormulaJS = `const radius = Math.cos(5 * theta) * breath;
       x = radius * Math.cos(theta);
@@ -904,13 +898,24 @@ export default function CyberSkeleton() {
       const d_dist = 0.38;
       x = ((1 - r_inner) * Math.cos(theta) + d_dist * Math.cos(((1 - r_inner) / r_inner) * theta)) * breath;
       y = ((1 - r_inner) * Math.sin(theta) - d_dist * Math.sin(((1 - r_inner) / r_inner) * theta)) * breath;`
-      } else {
+      } else if (exportCurve === 'spiral') {
         curveFormulaJS = `const base_r = ((theta % (2 * Math.PI)) / (2 * Math.PI)) * 0.5 * breath;
       const r = base_r + 0.3 * Math.cos(3 * theta);
       x = r * Math.cos(theta);
       y = r * Math.sin(theta);`
+      } else if (exportCurve === 'heart-beat') {
+        curveFormulaJS = `const t_eq = theta;
+      x = 16 * Math.pow(Math.sin(t_eq), 3);
+      y = -(13 * Math.cos(t_eq) - 5 * Math.cos(2 * t_eq) - 2 * Math.cos(3 * t_eq) - Math.cos(4 * t_eq));
+      x = x * 0.07 * breath;
+      y = y * 0.07 * breath;`
+      } else { // butterfly-drift
+        curveFormulaJS = `const r_val = Math.exp(Math.sin(theta)) - 2 * Math.cos(4 * theta) + Math.pow(Math.sin((2 * theta - Math.PI) / 24), 5);
+      x = r_val * Math.cos(theta) * 0.3 * breath;
+      y = r_val * Math.sin(theta) * 0.3 * breath;`
       }
 
+      // Define drawing render script
       let renderLogicJS = ''
       if (renderStyle === 'glow') {
         renderLogicJS = `const layers = [
@@ -934,8 +939,7 @@ export default function CyberSkeleton() {
           ctx.lineTo(cx + pt2.x, cy + pt2.y);
 
           const op = ratio * opacityScale;
-          const colors = getThemeColors(theme, op, thetaEnd, t);
-          ctx.strokeStyle = colors.line;
+          ctx.strokeStyle = hexToRgba('${lineColor}', op);
           ctx.stroke();
         }
       });`
@@ -945,14 +949,14 @@ export default function CyberSkeleton() {
         const theta = headTheta - trailRad * (1 - ratio);
         const pt = getPoint(theta, t, size);
 
-        const colors = getThemeColors(theme, ratio, theta, t);
-        
-        ctx.fillStyle = theme === 'rainbow' ? colors.glow : getThemeColors(theme, ratio * 0.3, theta, t).glow;
+        // Outer glow
+        ctx.fillStyle = hexToRgba('${glowColor}', ratio * 0.35);
         ctx.beginPath();
         ctx.arc(cx + pt.x, cy + pt.y, strokeWidth * ratio + glowSize * 0.3 * ratio, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = colors.line;
+        // Core dot
+        ctx.fillStyle = hexToRgba('${lineColor}', ratio);
         ctx.beginPath();
         ctx.arc(cx + pt.x, cy + pt.y, strokeWidth * 0.7 * ratio, 0, Math.PI * 2);
         ctx.fill();
@@ -971,7 +975,7 @@ export default function CyberSkeleton() {
         ctx.arc(cx + pt.x, cy + pt.y, Math.max(0.5, rad), 0, Math.PI * 2);
         ctx.fill();
       }`
-      } else {
+      } else { // minimalist
         renderLogicJS = `ctx.lineWidth = strokeWidth * 0.5;
       for (let i = 1; i <= 80; i++) {
         const ratio = i / 80;
@@ -986,20 +990,19 @@ export default function CyberSkeleton() {
         ctx.lineTo(cx + pt2.x, cy + pt2.y);
 
         const op = ratio * 0.8;
-        const colors = getThemeColors(theme, op, thetaEnd, t);
-        ctx.strokeStyle = theme === 'rainbow' ? colors.line : \`rgba(255, 255, 255, \${op})\`;
+        ctx.strokeStyle = hexToRgba('${lineColor}', op);
         ctx.stroke();
       }`
       }
 
+      // Glowing dot head logic (only for glow, dotted, minimalist)
       const drawHeadNodeJS = renderStyle !== 'halftone' ? `const headPt = getPoint(headTheta, t, size);
-      const colors = getThemeColors(theme, 1.0, headTheta, t);
 
       const glowGrad = ctx.createRadialGradient(
         cx + headPt.x, cy + headPt.y, 0,
         cx + headPt.x, cy + headPt.y, strokeWidth + glowSize / 2
       );
-      glowGrad.addColorStop(0, colors.line);
+      glowGrad.addColorStop(0, hexToRgba('${glowColor}', 1.0));
       glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = glowGrad;
       ctx.beginPath();
@@ -1036,14 +1039,14 @@ export default function MathWaveLoader() {
     resize();
     window.addEventListener('resize', resize);
 
+    // Configuration
     const speed = ${speed};
     const breathScale = ${breath / 100};
     const trailLength = ${trailLength};
     const strokeWidth = ${strokeWidth};
     const glowSize = ${glowSize};
-    const theme = '${theme}';
 
-    ${themeColorsJS.replace(/\n/g, '\n    ')}
+    ${hexToRgbaJS.replace(/\n/g, '\n    ')}
 
     const getPoint = (theta, time, size) => {
       const breath = 1.0 + breathScale * Math.sin(time * 0.05);
@@ -1075,6 +1078,7 @@ export default function MathWaveLoader() {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
+      // 1. Trace Background Guide Outline (except in high-contrast halftone)
       if ('${renderStyle}' !== 'halftone') {
         ctx.beginPath();
         const traceSteps = 300;
@@ -1084,16 +1088,18 @@ export default function MathWaveLoader() {
           if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y);
           else ctx.lineTo(cx + pt.x, cy + pt.y);
         }
-        ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.06)' : getThemeColors(theme, 0.08).glow;
+        ctx.strokeStyle = hexToRgba('${glowColor}', 0.08);
         ctx.lineWidth = 1;
         ctx.stroke();
       }
 
+      // 2. Draw moving trail path
       const headTheta = t * 0.02 * speed;
       const trailRad = (trailLength / 100) * Math.PI;
 
       ${renderLogicJS.replace(/\n/g, '\n      ')}
 
+      // 3. Draw head dot
       ${drawHeadNodeJS.replace(/\n/g, '\n      ')}
 
       t += 1;
@@ -1164,14 +1170,14 @@ export default function MathWaveLoader() {
   resize();
   window.addEventListener('resize', resize);
 
+  // Configuration
   const speed = ${speed};
   const breathScale = ${breath / 100};
   const trailLength = ${trailLength};
   const strokeWidth = ${strokeWidth};
   const glowSize = ${glowSize};
-  const theme = '${theme}';
 
-  ${themeColorsJS.replace(/\n/g, '\n  ')}
+  ${hexToRgbaJS.replace(/\n/g, '\n  ')}
 
   const getPoint = (theta, time, size) => {
     const breath = 1.0 + breathScale * Math.sin(time * 0.05);
@@ -1203,6 +1209,7 @@ export default function MathWaveLoader() {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
+    // 1. Trace Outline
     if ('${renderStyle}' !== 'halftone') {
       ctx.beginPath();
       const traceSteps = 300;
@@ -1212,16 +1219,18 @@ export default function MathWaveLoader() {
         if (i === 0) ctx.moveTo(cx + pt.x, cy + pt.y);
         else ctx.lineTo(cx + pt.x, cy + pt.y);
       }
-      ctx.strokeStyle = theme === 'rainbow' ? 'rgba(255, 255, 255, 0.06)' : getThemeColors(theme, 0.08).glow;
+      ctx.strokeStyle = hexToRgba('${glowColor}', 0.08);
       ctx.lineWidth = 1;
       ctx.stroke();
     }
 
+    // 2. Glowing trail
     const headTheta = t * 0.02 * speed;
     const trailRad = (trailLength / 100) * Math.PI;
 
     ${renderLogicJS.replace(/\n/g, '\n    ')}
 
+    // 3. Glow dot
     ${drawHeadNodeJS.replace(/\n/g, '\n    ')}
 
     t += 1;

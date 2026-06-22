@@ -80,7 +80,7 @@ export default function App() {
   const isGlyphStudioActive = activeTab === 'tools' && activeTool === 'glyph-studio'
 
   return (
-    <div className="flex min-h-full flex-col bg-zinc-950 text-zinc-100 selection:bg-primary selection:text-primary-foreground font-sans antialiased">
+    <div className="flex min-h-full flex-col bg-zinc-950 text-zinc-100 selection:bg-primary selection:text-primary-foreground font-sans antialiased overflow-x-hidden">
       
       {/* Visual background lights */}
       <div className="absolute top-0 left-1/4 h-[400px] w-[500px] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
