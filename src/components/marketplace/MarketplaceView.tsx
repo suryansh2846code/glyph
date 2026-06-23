@@ -1023,14 +1023,6 @@ const ONBOARDING_COUNTRIES = [
   { code: 'SG', dial: '+65', name: 'Singapore', continent: 'AS', flag: '🇸🇬' }
 ]
 
-const ONBOARDING_REGION_CENTERS: Record<string, { lon: number; lat: number }> = {
-  GLOBAL: { lon: 0, lat: 0 },
-  NA: { lon: -100, lat: 40 },
-  SA: { lon: -60, lat: -15 },
-  EU: { lon: 15, lat: 50 },
-  AF: { lon: 20, lat: 10 },
-  AS: { lon: 100, lat: 25 }
-}
 
 const ONBOARDING_COUNTRY_CENTERS: Record<string, { lon: number; lat: number }> = {
   US: { lon: -100, lat: 38 },
@@ -1058,6 +1050,64 @@ const ONBOARDING_COUNTRY_CENTERS: Record<string, { lon: number; lat: number }> =
   SG: { lon: 103.8, lat: 1.3 }
 }
 
+const COUNTRY_POLYGONS: Record<string, [number, number][]> = {
+  US: [[-125, 48], [-110, 48], [-90, 48], [-70, 45], [-75, 25], [-100, 25], [-120, 30]],
+  CA: [[-130, 50], [-60, 50], [-65, 70], [-130, 65]],
+  MX: [[-115, 30], [-100, 25], [-90, 20], [-95, 15], [-105, 20]],
+  PA: [[-83, 8], [-77, 7], [-78, 9], [-82, 9]],
+  BR: [[-70, -10], [-60, 5], [-45, 2], [-35, -6], [-40, -22], [-55, -25], [-60, -15]],
+  AR: [[-70, -22], [-55, -25], [-65, -50], [-72, -50]],
+  CO: [[-78, 2], [-72, 12], [-68, 6], [-70, -4], [-76, -4]],
+  CL: [[-74, -18], [-70, -18], [-72, -54], [-75, -50]],
+  GB: [[-6, 50], [-5, 56], [-2, 58], [1, 51]],
+  FR: [[-4, 48], [7, 51], [7, 43], [-1, 43]],
+  DE: [[6, 50], [14, 54], [14, 48], [6, 48]],
+  IT: [[8, 45], [13, 45], [18, 40], [16, 38], [10, 40]],
+  SE: [[11, 56], [16, 68], [22, 69], [17, 60], [12, 56]],
+  NO: [[5, 58], [10, 62], [20, 70], [26, 71], [15, 60], [5, 58]],
+  EG: [[25, 22], [35, 22], [35, 31], [25, 31]],
+  ZA: [[16, -29], [32, -29], [28, -34], [18, -34]],
+  NG: [[3, 4], [14, 4], [14, 13], [3, 13]],
+  KE: [[34, -4], [41, -4], [41, 4], [34, 4]],
+  CN: [[75, 40], [100, 42], [120, 45], [122, 23], [105, 22], [95, 29]],
+  IN: [[68, 23], [74, 30], [78, 35], [90, 28], [97, 26], [88, 22], [78, 8]],
+  JP: [[130, 31], [135, 34], [140, 38], [145, 44], [142, 44], [136, 36]],
+  AU: [[113, -21], [130, -12], [143, -12], [152, -25], [148, -38], [115, -34]],
+  SG: [[103.6, 1.2], [104, 1.2], [104, 1.4], [103.6, 1.4]]
+};
+
+const CONTINENT_POLYGONS: Record<string, [number, number][]> = {
+  NA: [[-168, 65], [-120, 70], [-60, 80], [-50, 60], [-55, 45], [-95, 25], [-80, 25], [-80, 9], [-100, 16], [-115, 30], [-125, 48], [-165, 54]],
+  SA: [[-80, 9], [-40, -10], [-35, -5], [-40, -20], [-70, -55], [-75, -45], [-70, -20], [-80, -5]],
+  EU: [[-10, 36], [-10, 60], [30, 70], [45, 60], [45, 35], [20, 35]],
+  AF: [[-17, 32], [30, 32], [50, 12], [40, -30], [20, -35], [10, 5]],
+  AS: [[45, 35], [45, 60], [170, 70], [140, 30], [120, 10], [100, 1], [80, 6], [60, 25]],
+  AU: [[113, -25], [115, -35], [145, -38], [153, -28], [140, -12], [130, -12]]
+};
+
+const isPointInPolygon = (x: number, y: number, vs: [number, number][]) => {
+  let inside = false;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    const xi = vs[i][0], yi = vs[i][1];
+    const xj = vs[j][0], yj = vs[j][1];
+    const intersect = ((yi > y) !== (yj > y))
+        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+const getPolygonBounds = (poly: [number, number][]) => {
+  let minLon = 180, maxLon = -180, minLat = 90, maxLat = -90;
+  poly.forEach(([lon, lat]) => {
+    if (lon < minLon) minLon = lon;
+    if (lon > maxLon) maxLon = lon;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  });
+  return { minLon, maxLon, minLat, maxLat };
+};
+
 interface OnboardingParticle {
   x: number; y: number; z: number;
   tx: number; ty: number; tz: number;
@@ -1068,11 +1118,13 @@ interface OnboardingParticle {
 }
 
 function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
-  const glowColor = props.glowColor || 'cyan'
+  const highlightColor = props.highlightColor || '#06b6d4'
+  const renderStyle = props.renderStyle || 'glow'
   const particleCount = Number(props.particleCount) || 800
   const autoRotate = props.autoRotate !== false
 
   const [selectedContinent, setSelectedContinent] = useState('GLOBAL')
+  const [projectionMode, setProjectionMode] = useState<'3d-spin' | '3d-static' | '2d-map'>('3d-spin')
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const [phone, setPhone] = useState('')
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
@@ -1091,6 +1143,14 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
   const currentOffY = useRef(0)
 
   const activeCountryObj = ONBOARDING_COUNTRIES.find(c => c.code === selectedCountry) || null
+
+  const parseHexToRgb = (hex: string) => {
+    let c = hex.substring(1)
+    if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]
+    const num = parseInt(c, 16)
+    return `${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}`
+  }
+  const themeRgb = parseHexToRgb(highlightColor)
 
   const renderContinentIcon = (id: string) => {
     switch (id) {
@@ -1131,84 +1191,104 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
     }
   }
 
-  let themeRgb = '6, 182, 212'
-  let borderGlowClass = 'border-cyan-500/30'
-  let textGlowClass = 'text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.45)]'
-  let glowColorClass = 'cyan'
-
-  if (glowColor === 'purple') {
-    themeRgb = '168, 85, 247'
-    borderGlowClass = 'border-purple-500/30'
-    textGlowClass = 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.45)]'
-    glowColorClass = 'purple'
-  } else if (glowColor === 'emerald') {
-    themeRgb = '16, 185, 129'
-    borderGlowClass = 'border-emerald-500/30'
-    textGlowClass = 'text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.45)]'
-    glowColorClass = 'emerald'
-  } else if (glowColor === 'rose') {
-    themeRgb = '244, 63, 94'
-    borderGlowClass = 'border-rose-500/30'
-    textGlowClass = 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.45)]'
-    glowColorClass = 'rose'
-  }
-
   // Initialize particles once (or when particleCount changes)
   useEffect(() => {
     const list: OnboardingParticle[] = []
-    for (let i = 0; i < particleCount; i++) {
-      const countryIdx = i % ONBOARDING_COUNTRIES.length
-      const c = ONBOARDING_COUNTRIES[countryIdx]
-      const center = ONBOARDING_COUNTRY_CENTERS[c.code]
+    
+    // 60% particles for onboarding countries, 40% for background/continents
+    const countryCount = Math.floor(particleCount * 0.6)
+    const bgCount = particleCount - countryCount
 
-      const latOffset = (Math.random() - 0.5) * 12
-      const lonOffset = (Math.random() - 0.5) * 15
+    // Generate onboarding country particles
+    for (let i = 0; i < countryCount; i++) {
+      const c = ONBOARDING_COUNTRIES[i % ONBOARDING_COUNTRIES.length]
+      const center = ONBOARDING_COUNTRY_CENTERS[c.code]
+      const poly = COUNTRY_POLYGONS[c.code]
+
+      let lon = center.lon
+      let lat = center.lat
+      if (poly) {
+        const bounds = getPolygonBounds(poly)
+        for (let attempt = 0; attempt < 30; attempt++) {
+          const testLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon)
+          const testLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat)
+          if (isPointInPolygon(testLon, testLat, poly)) {
+            lon = testLon
+            lat = testLat
+            break
+          }
+        }
+      }
 
       list.push({
         x: (Math.random() - 0.5) * 300,
         y: (Math.random() - 0.5) * 300,
         z: (Math.random() - 0.5) * 300,
         tx: 0, ty: 0, tz: 0,
-        lon: center.lon + lonOffset,
-        lat: center.lat + latOffset,
+        lon,
+        lat,
         continent: c.continent,
         country: c.code,
         idx: i
       })
     }
+
+    // Generate background continent particles
+    const continentKeys = ['NA', 'SA', 'EU', 'AF', 'AS', 'AU']
+    for (let i = 0; i < bgCount; i++) {
+      const cont = continentKeys[i % continentKeys.length]
+      const poly = CONTINENT_POLYGONS[cont]
+
+      let lon = 0
+      let lat = 0
+      if (poly) {
+        const bounds = getPolygonBounds(poly)
+        for (let attempt = 0; attempt < 30; attempt++) {
+          const testLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon)
+          const testLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat)
+          if (isPointInPolygon(testLon, testLat, poly)) {
+            lon = testLon
+            lat = testLat
+            break
+          }
+        }
+      }
+
+      list.push({
+        x: (Math.random() - 0.5) * 300,
+        y: (Math.random() - 0.5) * 300,
+        z: (Math.random() - 0.5) * 300,
+        tx: 0, ty: 0, tz: 0,
+        lon,
+        lat,
+        continent: cont,
+        country: '', // Empty country code so it doesn't highlight
+        idx: countryCount + i
+      })
+    }
+
     particlesRef.current = list
   }, [particleCount])
 
   // Morph targets calculation whenever selection changes
   useEffect(() => {
-    const isGlobe = selectedContinent === 'GLOBAL'
-    const isCont = !isGlobe && !selectedCountry
-    const isCtry = !!selectedCountry
+    const isGlobe = projectionMode === '3d-spin' || projectionMode === '3d-static'
 
     if (isGlobe) {
       camZoom.current = 1.0
       camOffX.current = 0
       camOffY.current = 0
       camAngleX.current = 0.2
-    } else if (isCont) {
-      camZoom.current = 1.55
-      const center = ONBOARDING_REGION_CENTERS[selectedContinent]
-      camOffX.current = -center.lon * 0.45
-      camOffY.current = center.lat * 0.45
-      camAngleX.current = 0
-    } else if (isCtry && selectedCountry) {
-      camZoom.current = 3.2
-      const center = ONBOARDING_COUNTRY_CENTERS[selectedCountry]
-      camOffX.current = -center.lon * 0.45
-      camOffY.current = center.lat * 0.45
+    } else {
+      // Keep the whole flat map visible and centered
+      camZoom.current = 0.65
+      camOffX.current = 0
+      camOffY.current = 0
       camAngleX.current = 0
     }
 
     const list = particlesRef.current
     list.forEach(p => {
-      const isSelectedContinent = p.continent === selectedContinent
-      const isSelectedCountry = p.country === selectedCountry
-
       const rLon = (p.lon * Math.PI) / 180
       const rLat = (p.lat * Math.PI) / 180
       const R = 85
@@ -1217,49 +1297,14 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
         p.tx = R * Math.cos(rLat) * Math.sin(rLon)
         p.ty = -R * Math.sin(rLat)
         p.tz = R * Math.cos(rLat) * Math.cos(rLon)
-      } else if (isCont) {
-        const fx = p.lon * 1.5
-        const fy = -p.lat * 1.8
-
-        if (isSelectedContinent) {
-          p.tx = fx
-          p.ty = fy
-          p.tz = 0
-        } else {
-          const ringRad = 110
-          const ringTheta = (p.idx / list.length) * Math.PI * 2
-          p.tx = ringRad * Math.cos(ringTheta)
-          p.ty = ringRad * Math.sin(ringTheta)
-          p.tz = -120
-        }
       } else {
-        const cCenter = ONBOARDING_COUNTRY_CENTERS[selectedCountry!]
-        if (isSelectedCountry) {
-          const localLon = p.lon - cCenter.lon
-          const localLat = p.lat - cCenter.lat
-
-          let dx = localLon * 12
-          let dy = -localLat * 14
-
-          if (p.idx % 3 === 0) {
-            dx += Math.sin(localLat * 1.5) * 1.5
-          }
-
-          p.tx = cCenter.lon * 1.5 + dx
-          p.ty = -cCenter.lat * 1.8 + dy
-          p.tz = 0
-        } else if (p.continent === selectedContinent) {
-          p.tx = p.lon * 1.5
-          p.ty = -p.lat * 1.8
-          p.tz = -60
-        } else {
-          p.tx = (p.idx % 2 === 0 ? 1 : -1) * 200
-          p.ty = (p.idx % 3 === 0 ? 1 : -1) * 200
-          p.tz = -300
-        }
+        // ALWAYS keep the full world map visible and normally scaled
+        p.tx = p.lon
+        p.ty = -p.lat
+        p.tz = 0
       }
     })
-  }, [selectedContinent, selectedCountry, particleCount])
+  }, [projectionMode, selectedContinent, selectedCountry, particleCount])
 
   // Canvas render loop
   useEffect(() => {
@@ -1276,8 +1321,23 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
       const cx = canvas.width / 2
       const cy = canvas.height / 2
 
-      if (selectedContinent === 'GLOBAL' && autoRotate) {
-        autoRot += 0.004
+      // Solid background for halftone style
+      if (renderStyle === 'halftone') {
+        ctx.fillStyle = '#000000'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+      }
+
+      const isGlobe = projectionMode === '3d-spin' || projectionMode === '3d-static'
+
+      if (isGlobe) {
+        if (selectedCountry) {
+          const center = ONBOARDING_COUNTRY_CENTERS[selectedCountry]
+          const targetRot = (center.lon * Math.PI) / 180
+          // Interpolate rotation to center the country
+          autoRot += (targetRot - autoRot) * 0.08
+        } else if (projectionMode === '3d-spin' && autoRotate) {
+          autoRot += 0.004
+        }
       } else {
         autoRot += (0 - autoRot) * 0.1
       }
@@ -1299,7 +1359,7 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
         let ry = p.y
         let rz = p.z
 
-        if (selectedContinent === 'GLOBAL') {
+        if (isGlobe) {
           const cosR = Math.cos(autoRot)
           const sinR = Math.sin(autoRot)
           rx = p.x * cosR - p.z * sinR
@@ -1321,55 +1381,71 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
       projected.sort((a, b) => b.pz - a.pz)
 
       projected.forEach(({ px, py, pz, p }) => {
-        const isSelectedContinent = p.continent === selectedContinent
-        const isSelectedCountry = p.country === selectedCountry
+        const isHighlight = selectedCountry 
+          ? (p.country === selectedCountry) 
+          : (selectedContinent !== 'GLOBAL' && p.continent === selectedContinent)
 
         let baseAlpha = 0.15
         let radius = 1.0
-        let isBright = false
+        let isBright = isHighlight
 
-        if (selectedContinent === 'GLOBAL') {
+        if (isGlobe) {
           const normZ = (pz + 85) / 170
-          baseAlpha = 0.1 + normZ * 0.55
-          radius = 0.8 + normZ * 1.5
-          isBright = normZ > 0.65
-        } else if (selectedCountry) {
-          if (isSelectedCountry) {
+          if (isHighlight) {
             baseAlpha = 0.95
             radius = 2.0
             isBright = true
-          } else if (p.continent === selectedContinent) {
-            baseAlpha = 0.18
-            radius = 1.0
           } else {
-            baseAlpha = 0.04
-            radius = 0.6
+            baseAlpha = 0.06 + normZ * 0.35
+            radius = 0.6 + normZ * 1.0
+            isBright = false
           }
         } else {
-          if (isSelectedContinent) {
-            baseAlpha = 0.85
-            radius = 1.8
-            isBright = true
-          } else {
-            baseAlpha = 0.08
-            radius = 0.7
-          }
+          baseAlpha = isHighlight ? 0.95 : 0.08
+          radius = isHighlight ? 2.0 : 0.7
+          isBright = isHighlight
         }
 
         if (px >= 0 && px <= canvas.width && py >= 0 && py <= canvas.height) {
           ctx.beginPath()
-          if (isBright) {
-            ctx.fillStyle = `rgba(${themeRgb}, ${baseAlpha * 0.35})`
-            ctx.arc(px, py, radius * 3.2, 0, Math.PI * 2)
+
+          if (renderStyle === 'glow') {
+            if (isBright) {
+              ctx.fillStyle = `rgba(${themeRgb}, ${baseAlpha * 0.35})`
+              ctx.arc(px, py, radius * 3.2, 0, Math.PI * 2)
+              ctx.fill()
+              ctx.beginPath()
+              ctx.fillStyle = '#ffffff'
+              ctx.arc(px, py, radius, 0, Math.PI * 2)
+            } else {
+              ctx.fillStyle = `rgba(255, 255, 255, ${baseAlpha})`
+              ctx.arc(px, py, radius, 0, Math.PI * 2)
+            }
             ctx.fill()
-            ctx.beginPath()
-            ctx.fillStyle = '#ffffff'
-            ctx.arc(px, py, radius, 0, Math.PI * 2)
-          } else {
-            ctx.fillStyle = `rgba(255, 255, 255, ${baseAlpha})`
-            ctx.arc(px, py, radius, 0, Math.PI * 2)
+          } 
+          else if (renderStyle === 'dotted') {
+            ctx.fillStyle = isBright ? highlightColor : 'rgba(255, 255, 255, 0.1)'
+            ctx.arc(px, py, isBright ? 2.2 : 0.8, 0, Math.PI * 2)
+            ctx.fill()
+          } 
+          else if (renderStyle === 'halftone') {
+            const mod = 0.4 + 0.6 * Math.sin(p.idx * 0.5)
+            const rad = (isBright ? 3.0 : 0.9) * Math.abs(mod)
+            ctx.fillStyle = isBright ? highlightColor : '#333333'
+            ctx.arc(px, py, rad, 0, Math.PI * 2)
+            ctx.fill()
+            if (isBright) {
+              ctx.beginPath()
+              ctx.fillStyle = '#ffffff'
+              ctx.arc(px, py, rad * 0.4, 0, Math.PI * 2)
+              ctx.fill()
+            }
+          } 
+          else { // minimalist
+            ctx.fillStyle = isBright ? highlightColor : 'rgba(255, 255, 255, 0.05)'
+            ctx.arc(px, py, isBright ? 1.5 : 0.5, 0, Math.PI * 2)
+            ctx.fill()
           }
-          ctx.fill()
         }
       })
 
@@ -1378,17 +1454,20 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
 
     draw()
     return () => cancelAnimationFrame(animId)
-  }, [selectedContinent, selectedCountry, autoRotate, themeRgb])
+  }, [projectionMode, selectedContinent, selectedCountry, autoRotate, themeRgb, renderStyle, highlightColor])
 
   const handleContinentSelect = (id: string) => {
     setSelectedContinent(id)
     setSelectedCountry(null)
+    if (id !== 'GLOBAL') {
+      setProjectionMode('2d-map')
+    }
   }
 
   const handleCountrySelect = (code: string) => {
     setSelectedCountry(code)
     const country = ONBOARDING_COUNTRIES.find(c => c.code === code)
-    if (country) {
+    if (country && projectionMode === '2d-map') {
       setSelectedContinent(country.continent)
     }
   }
@@ -1398,7 +1477,10 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
     : ONBOARDING_COUNTRIES.filter(c => c.continent === selectedContinent)
 
   return (
-    <div className="relative w-[300px] h-[550px] rounded-[2.5rem] border-[6px] border-zinc-900 bg-[#0c0c0e] shadow-2xl overflow-hidden flex flex-col justify-between select-none">
+    <div 
+      className="relative w-[300px] h-[550px] rounded-[2.5rem] border-[6px] border-zinc-900 bg-[#0c0c0e] overflow-hidden flex flex-col justify-between select-none transition-all duration-300"
+      style={{ boxShadow: `0 0 25px rgba(${themeRgb}, 0.15), 0 20px 40px rgba(0,0,0,0.8)` }}
+    >
       
       {/* Notch */}
       <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4.5 bg-zinc-900 rounded-full z-30 flex items-center justify-between px-3">
@@ -1455,6 +1537,37 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
           </div>
         </div>
 
+        {/* Projection Mode Selector */}
+        <div className="flex justify-center bg-zinc-950/60 p-0.5 rounded-lg border border-zinc-900/80 my-1">
+          {[
+            { id: '3d-spin', label: '3D Spin' },
+            { id: '3d-static', label: '3D Static' },
+            { id: '2d-map', label: '2D Map' }
+          ].map(mode => (
+            <button
+              key={mode.id}
+              onClick={() => {
+                setProjectionMode(mode.id as any)
+                if (mode.id === '2d-map') {
+                  if (!selectedCountry) {
+                    setSelectedContinent('GLOBAL')
+                  }
+                } else {
+                  setSelectedContinent('GLOBAL')
+                }
+              }}
+              className={cn(
+                "flex-1 py-1 rounded-md text-[9px] font-bold transition-all duration-200",
+                projectionMode === mode.id
+                  ? 'bg-zinc-800 text-zinc-100 shadow-sm shadow-black/40'
+                  : 'text-zinc-500 hover:text-zinc-300'
+              )}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+
         {/* Sliders */}
         <div className="w-full space-y-2">
           {/* Continent Horizontal selector list */}
@@ -1465,12 +1578,17 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
                 <button
                   key={c.id}
                   onClick={() => handleContinentSelect(c.id)}
-                  className={cn(
-                    "flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-semibold border transition-all duration-200",
-                    isActive
-                      ? `bg-${glowColorClass}-500/10 ${borderGlowClass} ${textGlowClass}`
-                      : 'bg-zinc-900/60 border-zinc-850 text-zinc-500 hover:text-zinc-300'
-                  )}
+                  className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-semibold border transition-all duration-200"
+                  style={isActive ? {
+                    borderColor: highlightColor,
+                    color: '#ffffff',
+                    backgroundColor: `rgba(${themeRgb}, 0.12)`,
+                    boxShadow: `0 0 8px rgba(${themeRgb}, 0.3)`
+                  } : {
+                    borderColor: 'rgba(255,255,255,0.05)',
+                    color: '#a1a1aa',
+                    backgroundColor: 'rgba(24, 24, 27, 0.6)'
+                  }}
                 >
                   {renderContinentIcon(c.id)}
                   <span>{c.label}</span>
@@ -1487,12 +1605,17 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
                 <button
                   key={c.code}
                   onClick={() => handleCountrySelect(c.code)}
-                  className={cn(
-                    "flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-medium border transition-all duration-200",
-                    isActive
-                      ? `bg-${glowColorClass}-500/10 ${borderGlowClass} text-${glowColorClass}-300`
-                      : 'bg-zinc-900/40 border-zinc-850 text-zinc-400 hover:text-zinc-200'
-                  )}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-medium border transition-all duration-200"
+                  style={isActive ? {
+                    borderColor: highlightColor,
+                    color: '#ffffff',
+                    backgroundColor: `rgba(${themeRgb}, 0.12)`,
+                    boxShadow: `0 0 10px rgba(${themeRgb}, 0.3)`
+                  } : {
+                    borderColor: 'rgba(255,255,255,0.05)',
+                    color: '#a1a1aa',
+                    backgroundColor: 'rgba(24, 24, 27, 0.4)'
+                  }}
                 >
                   <span>{c.flag}</span>
                   <span>{c.name}</span>
@@ -1550,7 +1673,7 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
 
         {/* Security indicator */}
         <div className="flex items-center justify-center gap-1 text-[9px] text-zinc-500 font-light mt-1 mb-2">
-          <ShieldCheck className={cn("h-3 w-3", `text-${glowColorClass}-500/70`)} />
+          <ShieldCheck className="h-3 w-3" style={{ color: highlightColor }} />
           <span>Secure 256-bit encrypted verification</span>
         </div>
 
@@ -2136,30 +2259,72 @@ export function MarketplaceView() {
                       )}
 
                       {p.type === 'color' && (
-                        <div className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-850/80 px-3 py-2 rounded-xl hover:border-zinc-800 transition-colors">
-                          <div className="relative w-9 h-9 rounded-full p-[2px] bg-gradient-to-tr from-rose-500 via-yellow-500 to-cyan-500 shadow-lg cursor-pointer group active:scale-95 transition-all">
-                            <div className="w-full h-full rounded-full bg-zinc-950 p-[2px]">
-                              <div
-                                className="w-full h-full rounded-full shadow-inner relative"
-                                style={{ backgroundColor: customProps[p.id] || p.default }}
-                              >
-                                <input
-                                  type="color"
-                                  value={customProps[p.id] || p.default}
-                                  onChange={(e) => handlePropChange(p.id, e.target.value)}
-                                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                                />
+                        <div className="space-y-2.5">
+                          <div className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-850/80 px-3 py-2 rounded-xl hover:border-zinc-800 transition-colors">
+                            <div className="relative w-9 h-9 rounded-full p-[2px] bg-gradient-to-tr from-rose-500 via-yellow-500 to-cyan-500 shadow-lg cursor-pointer group active:scale-95 transition-all">
+                              <div className="w-full h-full rounded-full bg-zinc-950 p-[2px] flex items-center justify-center">
+                                <div
+                                  className="w-full h-full rounded-full shadow-inner relative overflow-hidden"
+                                  style={{ backgroundColor: customProps[p.id] || p.default }}
+                                >
+                                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_40%,rgba(0,0,0,0.25)_100%)] pointer-events-none" />
+                                  <input
+                                    type="color"
+                                    value={customProps[p.id] || p.default}
+                                    onChange={(e) => handlePropChange(p.id, e.target.value)}
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                  />
+                                </div>
                               </div>
                             </div>
+                            <div className="flex-grow">
+                              <input
+                                type="text"
+                                value={customProps[p.id] || p.default}
+                                onChange={(e) => handlePropChange(p.id, e.target.value)}
+                                className="bg-transparent border-0 p-0 text-xs font-mono font-bold text-zinc-200 focus:ring-0 w-24 uppercase"
+                              />
+                              <p className="text-[9px] text-zinc-500 font-medium">Click circle for custom color wheel</p>
+                            </div>
                           </div>
-                          <div className="flex-grow">
-                            <input
-                              type="text"
-                              value={customProps[p.id] || p.default}
-                              onChange={(e) => handlePropChange(p.id, e.target.value)}
-                              className="bg-transparent border-0 p-0 text-xs font-mono font-bold text-zinc-200 focus:ring-0 w-20 uppercase"
-                            />
-                            <p className="text-[9px] text-zinc-500 font-medium">Click circle to open color picker</p>
+
+                          {/* Preset Color Grid */}
+                          <div className="flex flex-wrap gap-1.5 px-1 py-0.5">
+                            {[
+                              { label: 'Cyan', value: '#06b6d4' },
+                              { label: 'Purple', value: '#8b5cf6' },
+                              { label: 'Emerald', value: '#10b981' },
+                              { label: 'Rose', value: '#f43f5e' },
+                              { label: 'Amber', value: '#f59e0b' },
+                              { label: 'Blue', value: '#3b82f6' },
+                              { label: 'Pink', value: '#ec4899' },
+                              { label: 'White', value: '#ffffff' }
+                            ].map((preset) => {
+                              const currColor = (customProps[p.id] || p.default).toLowerCase()
+                              const isSelected = currColor === preset.value.toLowerCase()
+                              return (
+                                <button
+                                  key={preset.value}
+                                  type="button"
+                                  onClick={() => handlePropChange(p.id, preset.value)}
+                                  title={preset.label}
+                                  className={cn(
+                                    "w-6 h-6 rounded-full border transition-all relative flex items-center justify-center",
+                                    isSelected 
+                                      ? "border-zinc-200 scale-110 shadow-md shadow-black/40" 
+                                      : "border-zinc-800 hover:border-zinc-550 hover:scale-105"
+                                  )}
+                                  style={{ backgroundColor: preset.value }}
+                                >
+                                  {isSelected && (
+                                    <div className={cn(
+                                      "w-1.5 h-1.5 rounded-full",
+                                      preset.value === '#ffffff' ? "bg-black" : "bg-white"
+                                    )} />
+                                  )}
+                                </button>
+                              )
+                            })}
                           </div>
                         </div>
                       )}

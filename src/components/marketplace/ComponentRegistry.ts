@@ -1333,174 +1333,669 @@ export default function MathWaveLoader() {
     description: 'An onboarding phone country/code selector card inside a mock smartphone, featuring a dynamic 3D dot-matrix particle globe that morphs to continent maps and country silhouettes.',
     category: 'inputs',
     props: [
-      { id: 'glowColor', name: 'Accent Glow Hue', type: 'select', default: 'cyan', options: ['cyan', 'purple', 'emerald', 'rose'] },
+      { id: 'highlightColor', name: 'Highlight Theme Color', type: 'color', default: '#06b6d4' },
+      { id: 'renderStyle', name: 'Render Styling', type: 'select', default: 'glow', options: ['glow', 'dotted', 'halftone', 'minimalist'] },
       { id: 'particleCount', name: 'Particle Mesh Count', type: 'number', default: 800, min: 400, max: 1200, step: 50 },
       { id: 'autoRotate', name: 'Auto Rotate Globe', type: 'boolean', default: true }
     ],
     generateCode: (props) => {
-      const { glowColor, particleCount, autoRotate } = props;
+      const { highlightColor, renderStyle, particleCount, autoRotate } = props;
       
-      let themeColor = '#06b6d4';
-      let themeRgb = '6, 182, 212';
-      let themeTextGlow = 'text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]';
-      let borderGlow = 'border-cyan-500/30';
-
-      if (glowColor === 'purple') {
-        themeColor = '#a855f7';
-        themeRgb = '168, 85, 247';
-        themeTextGlow = 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]';
-        borderGlow = 'border-purple-500/30';
-      } else if (glowColor === 'emerald') {
-        themeColor = '#10b981';
-        themeRgb = '16, 185, 129';
-        themeTextGlow = 'text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]';
-        borderGlow = 'border-emerald-500/30';
-      } else if (glowColor === 'rose') {
-        themeColor = '#f43f5e';
-        themeRgb = '244, 63, 94';
-        themeTextGlow = 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.45)]';
-        borderGlow = 'border-rose-500/30';
-      }
+      const hexToRgb = (hex: string) => {
+        let c = hex.substring(1);
+        if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+        const num = parseInt(c, 16);
+        return `${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}`;
+      };
+      
+      const themeRgb = hexToRgb(highlightColor);
 
       return {
         tailwind: `import React, { useEffect, useRef, useState } from 'react';
-import { Globe, Wifi, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Globe, Wifi, ShieldCheck, ArrowRight, Battery } from 'lucide-react';
+
+const CONTINENTS = [
+  { id: 'GLOBAL', name: 'Globe', label: 'Globe' },
+  { id: 'NA', name: 'North America', label: 'N. America' },
+  { id: 'SA', name: 'South America', label: 'S. America' },
+  { id: 'EU', name: 'Europe', label: 'Europe' },
+  { id: 'AF', name: 'Africa', label: 'Africa' },
+  { id: 'AS', name: 'Asia & Oceania', label: 'Asia / Oc' }
+];
 
 const COUNTRIES = [
   { code: 'US', dial: '+1', name: 'United States', continent: 'NA', flag: '🇺🇸' },
   { code: 'CA', dial: '+1', name: 'Canada', continent: 'NA', flag: '🇨🇦' },
+  { code: 'MX', dial: '+52', name: 'Mexico', continent: 'NA', flag: '🇲🇽' },
+  { code: 'PA', dial: '+507', name: 'Panama', continent: 'NA', flag: '🇵🇦' },
   { code: 'BR', dial: '+55', name: 'Brazil', continent: 'SA', flag: '🇧🇷' },
+  { code: 'AR', dial: '+54', name: 'Argentina', continent: 'SA', flag: '🇦🇷' },
+  { code: 'CO', dial: '+57', name: 'Colombia', continent: 'SA', flag: '🇨🇴' },
+  { code: 'CL', dial: '+56', name: 'Chile', continent: 'SA', flag: '🇨🇱' },
   { code: 'GB', dial: '+44', name: 'United Kingdom', continent: 'EU', flag: '🇬🇧' },
   { code: 'FR', dial: '+33', name: 'France', continent: 'EU', flag: '🇫🇷' },
+  { code: 'DE', dial: '+49', name: 'Germany', continent: 'EU', flag: '🇩🇪' },
+  { code: 'IT', dial: '+39', name: 'Italy', continent: 'EU', flag: '🇮🇹' },
+  { code: 'SE', dial: '+46', name: 'Sweden', continent: 'EU', flag: '🇸🇪' },
+  { code: 'NO', dial: '+47', name: 'Norway', continent: 'EU', flag: '🇳🇴' },
+  { code: 'EG', dial: '+20', name: 'Egypt', continent: 'AF', flag: '🇪🇬' },
+  { code: 'ZA', dial: '+27', name: 'South Africa', continent: 'AF', flag: '🇿🇦' },
+  { code: 'NG', dial: '+234', name: 'Nigeria', continent: 'AF', flag: '🇳🇬' },
+  { code: 'KE', dial: '+254', name: 'Kenya', continent: 'AF', flag: '🇰🇪' },
   { code: 'CN', dial: '+86', name: 'China', continent: 'AS', flag: '🇨🇳' },
   { code: 'IN', dial: '+91', name: 'India', continent: 'AS', flag: '🇮🇳' },
   { code: 'JP', dial: '+81', name: 'Japan', continent: 'AS', flag: '🇯🇵' },
-  { code: 'AU', dial: '+61', name: 'Australia', continent: 'AS', flag: '🇦🇺' }
+  { code: 'AU', dial: '+61', name: 'Australia', continent: 'AS', flag: '🇦🇺' },
+  { code: 'SG', dial: '+65', name: 'Singapore', continent: 'AS', flag: '🇸🇬' }
 ];
 
-const COUNTRY_CENTERS = {
-  US: { lon: -100, lat: 38 }, CA: { lon: -105, lat: 58 }, BR: { lon: -55, lat: -10 },
-  GB: { lon: -2, lat: 54 }, FR: { lon: 2, lat: 46 }, CN: { lon: 104, lat: 35 },
-  IN: { lon: 78, lat: 21 }, JP: { lon: 138, lat: 36 }, AU: { lon: 134, lat: -25 }
+const COUNTRY_CENTERS: Record<string, { lon: number; lat: number }> = {
+  US: { lon: -100, lat: 38 }, CA: { lon: -105, lat: 58 }, MX: { lon: -102, lat: 23 }, PA: { lon: -80, lat: 9 },
+  BR: { lon: -55, lat: -10 }, AR: { lon: -65, lat: -35 }, CO: { lon: -73, lat: 4 }, CL: { lon: -71, lat: -30 },
+  GB: { lon: -2, lat: 54 }, FR: { lon: 2, lat: 46 }, DE: { lon: 10, lat: 51 }, IT: { lon: 12, lat: 42 },
+  SE: { lon: 18, lat: 62 }, NO: { lon: 8, lat: 61 }, EG: { lon: 30, lat: 26 }, ZA: { lon: 24, lat: -29 },
+  NG: { lon: 8, lat: 9 }, KE: { lon: 38, lat: -1 }, CN: { lon: 104, lat: 35 }, IN: { lon: 78, lat: 21 },
+  JP: { lon: 138, lat: 36 }, AU: { lon: 134, lat: -25 }, SG: { lon: 103.8, lat: 1.3 }
 };
+
+const COUNTRY_POLYGONS: Record<string, [number, number][]> = {
+  US: [[-125, 48], [-110, 48], [-90, 48], [-70, 45], [-75, 25], [-100, 25], [-120, 30]],
+  CA: [[-130, 50], [-60, 50], [-65, 70], [-130, 65]],
+  MX: [[-115, 30], [-100, 25], [-90, 20], [-95, 15], [-105, 20]],
+  PA: [[-83, 8], [-77, 7], [-78, 9], [-82, 9]],
+  BR: [[-70, -10], [-60, 5], [-45, 2], [-35, -6], [-40, -22], [-55, -25], [-60, -15]],
+  AR: [[-70, -22], [-55, -25], [-65, -50], [-72, -50]],
+  CO: [[-78, 2], [-72, 12], [-68, 6], [-70, -4], [-76, -4]],
+  CL: [[-74, -18], [-70, -18], [-72, -54], [-75, -50]],
+  GB: [[-6, 50], [-5, 56], [-2, 58], [1, 51]],
+  FR: [[-4, 48], [7, 51], [7, 43], [-1, 43]],
+  DE: [[6, 50], [14, 54], [14, 48], [6, 48]],
+  IT: [[8, 45], [13, 45], [18, 40], [16, 38], [10, 40]],
+  SE: [[11, 56], [16, 68], [22, 69], [17, 60], [12, 56]],
+  NO: [[5, 58], [10, 62], [20, 70], [26, 71], [15, 60], [5, 58]],
+  EG: [[25, 22], [35, 22], [35, 31], [25, 31]],
+  ZA: [[16, -29], [32, -29], [28, -34], [18, -34]],
+  NG: [[3, 4], [14, 4], [14, 13], [3, 13]],
+  KE: [[34, -4], [41, -4], [41, 4], [34, 4]],
+  CN: [[75, 40], [100, 42], [120, 45], [122, 23], [105, 22], [95, 29]],
+  IN: [[68, 23], [74, 30], [78, 35], [90, 28], [97, 26], [88, 22], [78, 8]],
+  JP: [[130, 31], [135, 34], [140, 38], [145, 44], [142, 44], [136, 36]],
+  AU: [[113, -21], [130, -12], [143, -12], [152, -25], [148, -38], [115, -34]],
+  SG: [[103.6, 1.2], [104, 1.2], [104, 1.4], [103.6, 1.4]]
+};
+
+const CONTINENT_POLYGONS: Record<string, [number, number][]> = {
+  NA: [[-168, 65], [-120, 70], [-60, 80], [-50, 60], [-55, 45], [-95, 25], [-80, 25], [-80, 9], [-100, 16], [-115, 30], [-125, 48], [-165, 54]],
+  SA: [[-80, 9], [-40, -10], [-35, -5], [-40, -20], [-70, -55], [-75, -45], [-70, -20], [-80, -5]],
+  EU: [[-10, 36], [-10, 60], [30, 70], [45, 60], [45, 35], [20, 35]],
+  AF: [[-17, 32], [30, 32], [50, 12], [40, -30], [20, -35], [10, 5]],
+  AS: [[45, 35], [45, 60], [170, 70], [140, 30], [120, 10], [100, 1], [80, 6], [60, 25]],
+  AU: [[113, -25], [115, -35], [145, -38], [153, -28], [140, -12], [130, -12]]
+};
+
+const isPointInPolygon = (x: number, y: number, vs: [number, number][]) => {
+  let inside = false;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    const xi = vs[i][0], yi = vs[i][1];
+    const xj = vs[j][0], yj = vs[j][1];
+    const intersect = ((yi > y) !== (yj > y))
+        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+const getPolygonBounds = (poly: [number, number][]) => {
+  let minLon = 180, maxLon = -180, minLat = 90, maxLat = -90;
+  poly.forEach(([lon, lat]) => {
+    if (lon < minLon) minLon = lon;
+    if (lon > maxLon) maxLon = lon;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  });
+  return { minLon, maxLon, minLat, maxLat };
+};
+
+interface Particle {
+  x: number; y: number; z: number;
+  tx: number; ty: number; tz: number;
+  lon: number; lat: number;
+  continent: string;
+  country: string;
+  idx: number;
+}
 
 export default function PhoneOnboarding() {
   const [selectedContinent, setSelectedContinent] = useState('GLOBAL');
-  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [projectionMode, setProjectionMode] = useState<'3d-spin' | '3d-static' | '2d-map'>('3d-spin');
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [phone, setPhone] = useState('');
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
 
-  const canvasRef = useRef(null);
-  const particlesRef = useRef([]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<Particle[]>([]);
+
+  const camZoom = useRef(1.0);
+  const currentZoom = useRef(1.0);
+  const camAngleX = useRef(0.1);
+  const currentAngleX = useRef(0.1);
+  const camOffX = useRef(0);
+  const currentOffX = useRef(0);
+  const camOffY = useRef(0);
+  const currentOffY = useRef(0);
+
+  const activeCountryObj = COUNTRIES.find(c => c.code === selectedCountry) || null;
 
   useEffect(() => {
-    const particles = [];
-    for (let i = 0; i < ${particleCount}; i++) {
+    const particles: Particle[] = [];
+    const countryCount = Math.floor(${particleCount} * 0.6);
+    const bgCount = ${particleCount} - countryCount;
+
+    // Generate onboarding country particles
+    for (let i = 0; i < countryCount; i++) {
       const c = COUNTRIES[i % COUNTRIES.length];
       const center = COUNTRY_CENTERS[c.code];
+      const poly = COUNTRY_POLYGONS[c.code];
+
+      let lon = center.lon;
+      let lat = center.lat;
+      if (poly) {
+        const bounds = getPolygonBounds(poly);
+        for (let attempt = 0; attempt < 30; attempt++) {
+          const testLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon);
+          const testLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat);
+          if (isPointInPolygon(testLon, testLat, poly)) {
+            lon = testLon;
+            lat = testLat;
+            break;
+          }
+        }
+      }
+
       particles.push({
-        x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400, z: (Math.random() - 0.5) * 400,
-        tx: 0, ty: 0, tz: 0, lon: center.lon + (Math.random() - 0.5) * 15, lat: center.lat + (Math.random() - 0.5) * 12,
-        continent: c.continent, country: c.code, idx: i
+        x: (Math.random() - 0.5) * 400,
+        y: (Math.random() - 0.5) * 400,
+        z: (Math.random() - 0.5) * 400,
+        tx: 0, ty: 0, tz: 0,
+        lon,
+        lat,
+        continent: c.continent,
+        country: c.code,
+        idx: i
       });
     }
+
+    // Generate background continent particles
+    const continentKeys = ['NA', 'SA', 'EU', 'AF', 'AS', 'AU'];
+    for (let i = 0; i < bgCount; i++) {
+      const cont = continentKeys[i % continentKeys.length];
+      const poly = CONTINENT_POLYGONS[cont];
+
+      let lon = 0;
+      let lat = 0;
+      if (poly) {
+        const bounds = getPolygonBounds(poly);
+        for (let attempt = 0; attempt < 30; attempt++) {
+          const testLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon);
+          const testLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat);
+          if (isPointInPolygon(testLon, testLat, poly)) {
+            lon = testLon;
+            lat = testLat;
+            break;
+          }
+        }
+      }
+
+      particles.push({
+        x: (Math.random() - 0.5) * 400,
+        y: (Math.random() - 0.5) * 400,
+        z: (Math.random() - 0.5) * 400,
+        tx: 0, ty: 0, tz: 0,
+        lon,
+        lat,
+        continent: cont,
+        country: '',
+        idx: countryCount + i
+      });
+    }
+
     particlesRef.current = particles;
   }, []);
 
   useEffect(() => {
+    const isGlobe = projectionMode === '3d-spin' || projectionMode === '3d-static';
+
+    if (isGlobe) {
+      camZoom.current = 1.0;
+      camOffX.current = 0;
+      camOffY.current = 0;
+      camAngleX.current = 0.2;
+    } else {
+      // Keep the whole flat map visible and centered (scale for 320x220 canvas is 0.8)
+      camZoom.current = 0.8;
+      camOffX.current = 0;
+      camOffY.current = 0;
+      camAngleX.current = 0;
+    }
+
     particlesRef.current.forEach(p => {
-      const R = 85;
       const rLon = (p.lon * Math.PI) / 180;
       const rLat = (p.lat * Math.PI) / 180;
-      if (selectedContinent === 'GLOBAL') {
+      const R = 85;
+
+      if (isGlobe) {
         p.tx = R * Math.cos(rLat) * Math.sin(rLon);
         p.ty = -R * Math.sin(rLat);
         p.tz = R * Math.cos(rLat) * Math.cos(rLon);
       } else {
-        p.tx = p.lon * 1.5;
-        p.ty = -p.lat * 1.8;
-        p.tz = (p.continent === selectedContinent) ? 0 : -100;
+        // ALWAYS keep the full world map in flat map modes
+        p.tx = p.lon;
+        p.ty = -p.lat;
+        p.tz = 0;
       }
     });
-  }, [selectedContinent, selectedCountry]);
+  }, [projectionMode, selectedContinent, selectedCountry]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    let animId, autoRot = 0;
+    if (!ctx) return;
+
+    let animId: number;
+    let autoRot = 0;
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (selectedContinent === 'GLOBAL' && ${autoRotate}) autoRot += 0.004;
-      
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+
+      // Solid background for halftone style
+      if ('${renderStyle}' === 'halftone') {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      const isGlobe = projectionMode === '3d-spin' || projectionMode === '3d-static';
+
+      if (isGlobe) {
+        if (selectedCountry) {
+          const center = COUNTRY_CENTERS[selectedCountry];
+          const targetRot = (center.lon * Math.PI) / 180;
+          // Interpolate rotation to center the country
+          autoRot += (targetRot - autoRot) * 0.08;
+        } else if (projectionMode === '3d-spin' && ${autoRotate}) {
+          autoRot += 0.004;
+        }
+      } else {
+        autoRot += (0 - autoRot) * 0.1;
+      }
+
+      currentZoom.current += (camZoom.current - currentZoom.current) * 0.08;
+      currentAngleX.current += (camAngleX.current - currentAngleX.current) * 0.08;
+      currentOffX.current += (camOffX.current - currentOffX.current) * 0.08;
+      currentOffY.current += (camOffY.current - currentOffY.current) * 0.08;
+
+      const zScale = currentZoom.current;
       const projected = particlesRef.current.map(p => {
         p.x += (p.tx - p.x) * 0.1;
         p.y += (p.ty - p.y) * 0.1;
         p.z += (p.tz - p.z) * 0.1;
-        
+
         let rx = p.x, ry = p.y, rz = p.z;
-        if (selectedContinent === 'GLOBAL') {
+        if (isGlobe) {
           rx = p.x * Math.cos(autoRot) - p.z * Math.sin(autoRot);
           rz = p.x * Math.sin(autoRot) + p.z * Math.cos(autoRot);
         }
-        
-        const scale = 250 / (250 - rz * 0.2);
-        return { px: rx * scale + canvas.width/2, py: ry * scale + canvas.height/2, pz: rz, p };
+
+        const cosX = Math.cos(currentAngleX.current);
+        const sinX = Math.sin(currentAngleX.current);
+        const finalY = ry * cosX - rz * sinX;
+        const finalZ = ry * sinX + rz * cosX;
+
+        const scale = 250 / (250 - finalZ * 0.2);
+        const px = (rx + currentOffX.current) * zScale * scale + cx;
+        const py = (finalY + currentOffY.current) * zScale * scale + cy;
+
+        return { px, py, pz: finalZ, p };
       });
 
       projected.sort((a, b) => b.pz - a.pz);
+
       projected.forEach(({ px, py, pz, p }) => {
-        ctx.beginPath();
-        ctx.fillStyle = (p.continent === selectedContinent || p.country === selectedCountry) ? 'rgba(${themeRgb}, 0.8)' : 'rgba(255, 255, 255, 0.2)';
-        ctx.arc(px, py, 1.5, 0, Math.PI * 2);
-        ctx.fill();
+        const isHighlight = selectedCountry 
+          ? (p.country === selectedCountry) 
+          : (selectedContinent !== 'GLOBAL' && p.continent === selectedContinent);
+
+        let baseAlpha = 0.15;
+        let radius = 1.0;
+        let isBright = isHighlight;
+
+        if (isGlobe) {
+          const normZ = (pz + 85) / 170;
+          if (isHighlight) {
+            baseAlpha = 0.95;
+            radius = 2.0;
+            isBright = true;
+          } else {
+            baseAlpha = 0.06 + normZ * 0.35;
+            radius = 0.6 + normZ * 1.0;
+            isBright = false;
+          }
+        } else {
+          baseAlpha = isHighlight ? 0.95 : 0.08;
+          radius = isHighlight ? 2.0 : 0.7;
+          isBright = isHighlight;
+        }
+
+        if (px >= 0 && px <= canvas.width && py >= 0 && py <= canvas.height) {
+          ctx.beginPath();
+          
+          if ('${renderStyle}' === 'glow') {
+            if (isBright) {
+              ctx.fillStyle = \`rgba(${themeRgb}, \${baseAlpha * 0.35})\`;
+              ctx.arc(px, py, radius * 3.2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.beginPath();
+              ctx.fillStyle = '#ffffff';
+              ctx.arc(px, py, radius, 0, Math.PI * 2);
+            } else {
+              ctx.fillStyle = \`rgba(255, 255, 255, \${baseAlpha})\`;
+              ctx.arc(px, py, radius, 0, Math.PI * 2);
+            }
+            ctx.fill();
+          } 
+          else if ('${renderStyle}' === 'dotted') {
+            ctx.fillStyle = isBright ? '${highlightColor}' : 'rgba(255, 255, 255, 0.1)';
+            ctx.arc(px, py, isBright ? 2.2 : 0.8, 0, Math.PI * 2);
+            ctx.fill();
+          } 
+          else if ('${renderStyle}' === 'halftone') {
+            const mod = 0.4 + 0.6 * Math.sin(p.idx * 0.5);
+            const rad = (isBright ? 3.0 : 0.9) * Math.abs(mod);
+            ctx.fillStyle = isBright ? '${highlightColor}' : '#333333';
+            ctx.arc(px, py, rad, 0, Math.PI * 2);
+            ctx.fill();
+            if (isBright) {
+              ctx.beginPath();
+              ctx.fillStyle = '#ffffff';
+              ctx.arc(px, py, rad * 0.4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } 
+          else { // minimalist
+            ctx.fillStyle = isBright ? '${highlightColor}' : 'rgba(255, 255, 255, 0.05)';
+            ctx.arc(px, py, isBright ? 1.5 : 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       });
+
       animId = requestAnimationFrame(draw);
     };
+
     draw();
     return () => cancelAnimationFrame(animId);
-  }, [selectedContinent, selectedCountry]);
+  }, [projectionMode, selectedContinent, selectedCountry]);
+
+  const handleContinentSelect = (id: string) => {
+    setSelectedContinent(id);
+    setSelectedCountry(null);
+    if (id !== 'GLOBAL') {
+      setProjectionMode('2d-map');
+    }
+  };
+
+  const handleCountrySelect = (code: string) => {
+    setSelectedCountry(code);
+    const country = COUNTRIES.find(c => c.code === code);
+    if (country && projectionMode === '2d-map') {
+      setSelectedContinent(country.continent);
+    }
+  };
+
+  const filteredCountries = selectedContinent === 'GLOBAL' 
+    ? COUNTRIES 
+    : COUNTRIES.filter(c => c.continent === selectedContinent);
+
+  const renderContinentIcon = (id: string) => {
+    switch (id) {
+      case 'GLOBAL':
+        return <Globe className="h-3.5 w-3.5" />;
+      case 'NA':
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+            <path d="M6 4h8l2 3-1 2-3 1-2 4-2-2-2-8z" />
+          </svg>
+        );
+      case 'SA':
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+            <path d="M9 5h5l-2 5-3 6-2-4 2-7z" />
+          </svg>
+        );
+      case 'EU':
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+            <path d="M5 8h4l2-2 3 1 3-2 1 3-3 2v2l-3-1-3 2-5-5z" />
+          </svg>
+        );
+      case 'AF':
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+            <path d="M7 6h7l3 3-1 3-3 4-2-3-4-7z" />
+          </svg>
+        );
+      case 'AS':
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+            <path d="M4 6h12l3 3-1 3 3 2-2 3-8-1-7-10z" />
+          </svg>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="flex items-center justify-center p-4 bg-zinc-950/80 min-h-screen text-white">
-      <div className="relative w-[360px] h-[720px] rounded-[3.2rem] border-[10px] border-zinc-900 bg-[#0d0d0d] overflow-hidden flex flex-col p-6">
-        <div className="text-center mb-6">
-          <h2 className="text-xl font-bold">Enter your phone</h2>
-          <p className="text-xs text-zinc-500">Select your country and number</p>
+    <div className="flex items-center justify-center p-4 bg-zinc-950/80 min-h-screen text-white select-none">
+      <div className="relative w-[360px] h-[720px] rounded-[3.2rem] border-[10px] border-zinc-900 bg-[#0d0d0d] shadow-2xl shadow-black overflow-hidden flex flex-col justify-between">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-6 bg-zinc-900 rounded-full z-30 flex items-center justify-between px-4">
+          <div className="w-2.5 h-2.5 rounded-full bg-zinc-800" />
+          <div className="w-4 h-1.5 rounded-full bg-zinc-800" />
         </div>
 
-        <canvas ref={canvasRef} width={320} height={220} className="w-full h-[220px] mb-4" />
-
-        <div className="flex gap-2 overflow-x-auto mb-4 pb-2">
-          {['GLOBAL', 'NA', 'SA', 'EU', 'AS'].map(c => (
-            <button key={c} onClick={() => setSelectedContinent(c)} className={\`px-3 py-1 rounded-full text-xs \${selectedContinent === c ? '${borderGlow} ${themeTextGlow}' : 'bg-zinc-900'}\`}>
-              {c}
-            </button>
-          ))}
+        <div className="h-10 pt-4 px-6 flex justify-between items-center text-[10px] text-zinc-500 font-medium font-mono z-20">
+          <span>12:20</span>
+          <div className="flex items-center gap-1.5">
+            <Wifi className="h-3 w-3" />
+            <div className="h-2.5 w-4 border border-zinc-500 rounded-sm relative flex items-center p-0.5">
+              <div className="h-full w-full bg-zinc-500 rounded-2xs" />
+              <div className="absolute -right-0.5 w-0.5 h-1 bg-zinc-500 rounded-r-3xs" />
+            </div>
+          </div>
         </div>
 
-        <div className="relative flex items-center gap-2 bg-zinc-900/40 p-2 rounded-2xl mb-4">
-          <button onClick={() => setCountryDropdownOpen(!countryDropdownOpen)} className="px-3 py-2 bg-zinc-900 rounded-xl text-xs font-bold">
-            {COUNTRIES.find(c => c.code === selectedCountry)?.flag || '🌎'}
+        <div className="flex-1 flex flex-col justify-between px-5 pt-2 pb-5 z-10 overflow-y-auto overflow-x-hidden">
+          <div className="text-center">
+            <h2 className="text-xl font-bold tracking-tight text-zinc-100">Enter your phone</h2>
+            <p className="text-xs text-zinc-500 mt-1 font-light">Select your country and number</p>
+          </div>
+
+          <div className="relative w-full h-[220px] my-2 bg-gradient-to-b from-transparent to-black/30 flex items-center justify-center">
+            <canvas 
+              ref={canvasRef} 
+              width={320} 
+              height={220} 
+              className="w-full h-full block cursor-pointer active:scale-98 transition-transform duration-200" 
+              onClick={() => {
+                setSelectedContinent('GLOBAL');
+                setSelectedCountry(null);
+              }}
+            />
+            {selectedContinent !== 'GLOBAL' && (
+              <button 
+                onClick={() => {
+                  setSelectedContinent('GLOBAL');
+                  setSelectedCountry(null);
+                }}
+                className="absolute top-2 right-2 px-2.5 py-1 text-[9px] font-semibold bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 rounded-full text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                Reset View
+              </button>
+            )}
+            <div className="absolute bottom-1 left-2 text-[9px] font-mono text-zinc-600 uppercase tracking-widest pointer-events-none">
+              {selectedCountry 
+                ? \`Country: \${selectedCountry}\` 
+                : selectedContinent === 'GLOBAL' 
+                  ? 'Globe Mode' 
+                  : \`Continent: \${selectedContinent}\`}
+            </div>
+          </div>
+
+          {/* Projection Mode Selector */}
+          <div className="flex justify-center bg-zinc-950/60 p-0.5 rounded-lg border border-zinc-900/80 my-1">
+            {[
+              { id: '3d-spin', label: '3D Spin' },
+              { id: '3d-static', label: '3D Static' },
+              { id: '2d-map', label: '2D Map' }
+            ].map(mode => (
+              <button
+                key={mode.id}
+                onClick={() => {
+                  setProjectionMode(mode.id as any);
+                  if (mode.id === '2d-map') {
+                    if (!selectedCountry) {
+                      setSelectedContinent('GLOBAL');
+                    }
+                  } else {
+                    setSelectedContinent('GLOBAL');
+                  }
+                }}
+                className={\`flex-shrink-0 flex-1 py-1 rounded-md text-[9px] font-bold transition-all duration-200 \${
+                  projectionMode === mode.id
+                    ? 'bg-zinc-800 text-zinc-100 shadow-sm shadow-black/40'
+                    : 'text-zinc-500 hover:text-zinc-350'
+                }\`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="w-full mb-3">
+            <div className="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-zinc-800">
+              {CONTINENTS.map(c => {
+                const isActive = selectedContinent === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => handleContinentSelect(c.id)}
+                    className={\`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-semibold border transition-all duration-200 \${
+                      isActive 
+                        ? 'bg-zinc-900 border-${highlightColor} text-white drop-shadow-[0_0_8px_rgba(${themeRgb},0.25)]'
+                        : 'bg-zinc-900/60 border-zinc-850 text-zinc-500 hover:text-zinc-300'
+                    }\`}
+                  >
+                    {renderContinentIcon(c.id)}
+                    <span className="ml-1">{c.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="w-full mb-4">
+            <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-800">
+              {filteredCountries.map(c => {
+                const isActive = selectedCountry === c.code;
+                return (
+                  <button
+                    key={c.code}
+                    onClick={() => handleCountrySelect(c.code)}
+                    className={\`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-medium border transition-all duration-200 \${
+                      isActive 
+                        ? 'bg-zinc-900 border-${highlightColor} text-white drop-shadow-[0_0_10px_rgba(${themeRgb},0.25)]'
+                        : 'bg-zinc-900/45 border-zinc-850 text-zinc-400 hover:text-zinc-200'
+                    }\`}
+                  >
+                    <span>{c.flag}</span>
+                    <span>{c.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="relative w-full flex items-center gap-2 mb-4 bg-zinc-900/40 border border-zinc-850 focus-within:border-zinc-800 rounded-2xl p-1.5">
+            <div className="relative">
+              <button
+                onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-200 hover:text-white transition-colors"
+              >
+                <span>{activeCountryObj ? activeCountryObj.flag : '🌎'}</span>
+                <span>{activeCountryObj ? activeCountryObj.dial : '+..'}</span>
+              </button>
+
+              {countryDropdownOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-[240px] max-h-[220px] overflow-y-auto bg-zinc-900/95 border border-zinc-850 rounded-2xl p-1.5 shadow-xl backdrop-blur-md z-40">
+                  <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest px-2.5 py-1.5 border-b border-zinc-850/50 mb-1">
+                    Select Dial Code
+                  </div>
+                  {COUNTRIES.map(c => (
+                    <button
+                      key={c.code}
+                      onClick={() => {
+                        handleCountrySelect(c.code);
+                        setCountryDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-2.5 py-1.5 hover:bg-zinc-850 rounded-lg text-left text-xs text-zinc-300 hover:text-white transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{c.flag}</span>
+                        <span className="truncate max-w-[120px]">{c.name}</span>
+                      </span>
+                      <span className="text-zinc-500 font-mono font-medium">{c.dial}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\\D/g, ''))}
+              placeholder="Phone number"
+              className="flex-1 bg-transparent border-0 outline-none focus:ring-0 text-sm font-medium text-zinc-200 placeholder-zinc-600 px-2 py-1.5 font-mono"
+            />
+          </div>
+
+          <div className="flex items-center justify-center gap-1.5 text-[10px] text-zinc-500 font-light mb-4">
+            <ShieldCheck className="h-3.5 w-3.5 text-zinc-600" />
+            <span>Secure 256-bit encrypted verification</span>
+          </div>
+
+          <button
+            onClick={() => alert(\`Onboarding requested for: \${activeCountryObj?.dial || ''} \${phone}\`)}
+            disabled={!phone}
+            className={\`group w-full relative inline-flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-xs font-bold transition-all duration-300 active:scale-98 \${
+              phone 
+                ? 'bg-zinc-100 text-black hover:bg-white shadow-xl shadow-white/5'
+                : 'bg-zinc-900 border border-zinc-850 text-zinc-600 cursor-not-allowed'
+            }\`}
+          >
+            <span>Continue</span>
+            <ArrowRight className="h-4.5 w-4.5 group-hover:translate-x-0.5 transition-transform duration-200" />
           </button>
-          <input 
-            type="tel" 
-            value={phone} 
-            onChange={(e) => setPhone(e.target.value.replace(/\\D/g, ''))} 
-            placeholder="Phone number"
-            className="flex-1 bg-transparent outline-none text-sm font-mono"
-          />
-        </div>
 
-        <button disabled={!phone} className="w-full py-3.5 rounded-2xl text-xs font-bold bg-zinc-100 text-black disabled:bg-zinc-800 disabled:text-zinc-600">
-          Continue
-        </button>
+        </div>
       </div>
+
     </div>
   );
 }`,
-        css: `.smartphone-case { width: 340px; height: 680px; border-radius: 48px; border: 10px solid #18181b; background: #0d0d0d; box-shadow: 0 0 20px ${themeColor}20; }`
+        css: `.smartphone-case { width: 340px; height: 680px; border-radius: 48px; border: 10px solid #18181b; background: #0d0d0d; box-shadow: 0 0 20px ${highlightColor}20; }`
       }
     }
   }
