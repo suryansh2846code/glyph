@@ -11,11 +11,13 @@ import { ToolsHub } from '@/components/tools/ToolsHub'
 import { GlyphStudioWrapper } from '@/components/tools/GlyphStudioWrapper'
 import { GlassmorphismGenerator } from '@/components/tools/GlassmorphismGenerator'
 import { GradientGenerator } from '@/components/tools/GradientGenerator'
+import { LandingPage } from '@/components/LandingPage'
 import { cn } from '@/lib/utils'
 
 type Tab = 'marketplace' | 'tools'
 
 export default function App() {
+  const [showLanding, setShowLanding] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('marketplace')
   const [activeTool, setActiveTool] = useState<string | null>(null)
 
@@ -28,6 +30,10 @@ export default function App() {
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab)
     setActiveTool(null)
+  }
+
+  const handleEnterApp = () => {
+    setShowLanding(false)
   }
 
   const renderActiveContent = () => {
@@ -79,6 +85,16 @@ export default function App() {
   // Adjust container padding based on active states (GlyphStudioWrapper manages its own inner margins & header)
   const isGlyphStudioActive = activeTab === 'tools' && activeTool === 'glyph-studio'
 
+  // ── Landing page (full-screen, no nav) ────────────────────────────────────
+  if (showLanding) {
+    return (
+      <div className="bg-zinc-950 text-zinc-100 font-sans antialiased overflow-x-hidden">
+        <LandingPage onEnter={handleEnterApp} />
+      </div>
+    )
+  }
+
+  // ── Main app shell ────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-full flex-col bg-zinc-950 text-zinc-100 selection:bg-primary selection:text-primary-foreground font-sans antialiased overflow-x-hidden">
       
@@ -91,16 +107,19 @@ export default function App() {
         <header className="sticky top-0 z-40 border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-md">
           <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 sm:px-6">
             
-            {/* Logo Group */}
-            <div className="flex items-center gap-2 select-none">
+            {/* Logo Group — click to go back to landing */}
+            <button
+              onClick={() => setShowLanding(true)}
+              className="flex items-center gap-2 select-none hover:opacity-80 transition-opacity duration-200"
+            >
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-primary to-violet-600 text-white shadow-lg shadow-primary/10">
                 <Sparkles className="h-4 w-4" />
               </div>
-              <div className="leading-tight">
+              <div className="leading-tight text-left">
                 <p className="text-sm font-black tracking-tight text-zinc-100">Glyph Studio</p>
                 <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">Marketplace &amp; Suite</p>
               </div>
-            </div>
+            </button>
 
             {/* Navigation Tabs */}
             <nav className="flex space-x-1 bg-zinc-900/60 p-0.5 rounded-xl border border-zinc-850">

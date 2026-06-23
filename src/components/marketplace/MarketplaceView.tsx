@@ -1317,7 +1317,10 @@ export function MarketplaceView() {
                   >
                     {/* Live Preview Header */}
                     <div className="relative flex items-center justify-center p-8 bg-zinc-900/30 border-b border-zinc-900 h-44 overflow-hidden chequered-pattern">
-                      <LivePreviewRenderer item={item} props={defaultProps} />
+                      <LivePreviewRenderer
+                        item={item}
+                        props={item.id === 'math-curve-pack' ? { ...defaultProps, isCompact: true } : defaultProps}
+                      />
                     </div>
 
                     {/* Metadata body */}
