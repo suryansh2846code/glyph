@@ -1,0 +1,1586 @@
+[
+  {
+    "name": "Afghanistan",
+    "iso": "AF",
+    "dial": "+93",
+    "lat": 33.82,
+    "lon": 65.93,
+    "flag": "🇦🇫"
+  },
+  {
+    "name": "Albania",
+    "iso": "AL",
+    "dial": "+355",
+    "lat": 41.13,
+    "lon": 20.05,
+    "flag": "🇦🇱"
+  },
+  {
+    "name": "Algeria",
+    "iso": "DZ",
+    "dial": "+213",
+    "lat": 28.06,
+    "lon": 2.63,
+    "flag": "🇩🇿"
+  },
+  {
+    "name": "American Samoa",
+    "iso": "AS",
+    "dial": "+1684",
+    "lat": -14.3,
+    "lon": -170.72,
+    "flag": "🇦🇸"
+  },
+  {
+    "name": "Andorra",
+    "iso": "AD",
+    "dial": "+376",
+    "lat": 42.54,
+    "lon": 1.56,
+    "flag": "🇦🇩"
+  },
+  {
+    "name": "Angola",
+    "iso": "AO",
+    "dial": "+244",
+    "lat": -12.27,
+    "lon": 17.53,
+    "flag": "🇦🇴"
+  },
+  {
+    "name": "Anguilla",
+    "iso": "AI",
+    "dial": "+1264",
+    "lat": 18.22,
+    "lon": -63.07,
+    "flag": "🇦🇮"
+  },
+  {
+    "name": "Antarctica",
+    "iso": "AQ",
+    "dial": "+672",
+    "lat": -84.94,
+    "lon": 82.07,
+    "flag": "🇦🇶"
+  },
+  {
+    "name": "Argentina",
+    "iso": "AR",
+    "dial": "+54",
+    "lat": -34.68,
+    "lon": -64.76,
+    "flag": "🇦🇷"
+  },
+  {
+    "name": "Armenia",
+    "iso": "AM",
+    "dial": "+374",
+    "lat": 40.29,
+    "lon": 44.94,
+    "flag": "🇦🇲"
+  },
+  {
+    "name": "Aruba",
+    "iso": "AW",
+    "dial": "+297",
+    "lat": 12.52,
+    "lon": -69.98,
+    "flag": "🇦🇼"
+  },
+  {
+    "name": "Australia",
+    "iso": "AU",
+    "dial": "+61",
+    "lat": -25.76,
+    "lon": 134.3,
+    "flag": "🇦🇺"
+  },
+  {
+    "name": "Austria",
+    "iso": "AT",
+    "dial": "+43",
+    "lat": 47.59,
+    "lon": 14.11,
+    "flag": "🇦🇹"
+  },
+  {
+    "name": "Azerbaijan",
+    "iso": "AZ",
+    "dial": "+994",
+    "lat": 40.29,
+    "lon": 47.55,
+    "flag": "🇦🇿"
+  },
+  {
+    "name": "Bahamas",
+    "iso": "BS",
+    "dial": "+1242",
+    "lat": 24.28,
+    "lon": -76.59,
+    "flag": "🇧🇸"
+  },
+  {
+    "name": "Bahrain",
+    "iso": "BH",
+    "dial": "+973",
+    "lat": 26.04,
+    "lon": 50.54,
+    "flag": "🇧🇭"
+  },
+  {
+    "name": "Bangladesh",
+    "iso": "BD",
+    "dial": "+880",
+    "lat": 23.86,
+    "lon": 90.25,
+    "flag": "🇧🇩"
+  },
+  {
+    "name": "Barbados",
+    "iso": "BB",
+    "dial": "+1246",
+    "lat": 13.18,
+    "lon": -59.56,
+    "flag": "🇧🇧"
+  },
+  {
+    "name": "Belarus",
+    "iso": "BY",
+    "dial": "+375",
+    "lat": 53.52,
+    "lon": 28.02,
+    "flag": "🇧🇾"
+  },
+  {
+    "name": "Belgium",
+    "iso": "BE",
+    "dial": "+32",
+    "lat": 50.64,
+    "lon": 4.65,
+    "flag": "🇧🇪"
+  },
+  {
+    "name": "Belize",
+    "iso": "BZ",
+    "dial": "+501",
+    "lat": 17.2,
+    "lon": -88.71,
+    "flag": "🇧🇿"
+  },
+  {
+    "name": "Benin",
+    "iso": "BJ",
+    "dial": "+229",
+    "lat": 9.64,
+    "lon": 2.33,
+    "flag": "🇧🇯"
+  },
+  {
+    "name": "Bermuda",
+    "iso": "BM",
+    "dial": "+1441",
+    "lat": 32.31,
+    "lon": -64.76,
+    "flag": "🇧🇲"
+  },
+  {
+    "name": "Bhutan",
+    "iso": "BT",
+    "dial": "+975",
+    "lat": 27.41,
+    "lon": 90.4,
+    "flag": "🇧🇹"
+  },
+  {
+    "name": "Bolivia",
+    "iso": "BO",
+    "dial": "+591",
+    "lat": -16.68,
+    "lon": -64.7,
+    "flag": "🇧🇴"
+  },
+  {
+    "name": "Botswana",
+    "iso": "BW",
+    "dial": "+267",
+    "lat": -22.17,
+    "lon": 23.81,
+    "flag": "🇧🇼"
+  },
+  {
+    "name": "Brazil",
+    "iso": "BR",
+    "dial": "+55",
+    "lat": -10.64,
+    "lon": -53.22,
+    "flag": "🇧🇷"
+  },
+  {
+    "name": "Brunei",
+    "iso": "BN",
+    "dial": "+673",
+    "lat": 4.52,
+    "lon": 114.72,
+    "flag": "🇧🇳"
+  },
+  {
+    "name": "Bulgaria",
+    "iso": "BG",
+    "dial": "+359",
+    "lat": 42.77,
+    "lon": 25.21,
+    "flag": "🇧🇬"
+  },
+  {
+    "name": "Burkina Faso",
+    "iso": "BF",
+    "dial": "+226",
+    "lat": 12.27,
+    "lon": -1.76,
+    "flag": "🇧🇫"
+  },
+  {
+    "name": "Burundi",
+    "iso": "BI",
+    "dial": "+257",
+    "lat": -3.36,
+    "lon": 29.88,
+    "flag": "🇧🇮"
+  },
+  {
+    "name": "Cambodia",
+    "iso": "KH",
+    "dial": "+855",
+    "lat": 12.72,
+    "lon": 104.91,
+    "flag": "🇰🇭"
+  },
+  {
+    "name": "Cameroon",
+    "iso": "CM",
+    "dial": "+237",
+    "lat": 5.68,
+    "lon": 12.73,
+    "flag": "🇨🇲"
+  },
+  {
+    "name": "Canada",
+    "iso": "CA",
+    "dial": "+1",
+    "lat": 60.42,
+    "lon": -96.55,
+    "flag": "🇨🇦"
+  },
+  {
+    "name": "Chad",
+    "iso": "TD",
+    "dial": "+235",
+    "lat": 15.28,
+    "lon": 18.64,
+    "flag": "🇹🇩"
+  },
+  {
+    "name": "Chile",
+    "iso": "CL",
+    "dial": "+56",
+    "lat": -36.07,
+    "lon": -71.06,
+    "flag": "🇨🇱"
+  },
+  {
+    "name": "China",
+    "iso": "CN",
+    "dial": "+86",
+    "lat": 36.69,
+    "lon": 103.38,
+    "flag": "🇨🇳"
+  },
+  {
+    "name": "Colombia",
+    "iso": "CO",
+    "dial": "+57",
+    "lat": 3.9,
+    "lon": -73.08,
+    "flag": "🇨🇴"
+  },
+  {
+    "name": "Comoros",
+    "iso": "KM",
+    "dial": "+269",
+    "lat": -11.88,
+    "lon": 43.68,
+    "flag": "🇰🇲"
+  },
+  {
+    "name": "Congo",
+    "iso": "CG",
+    "dial": "+242",
+    "lat": -0.84,
+    "lon": 15.22,
+    "flag": "🇨🇬"
+  },
+  {
+    "name": "Costa Rica",
+    "iso": "CR",
+    "dial": "+506",
+    "lat": 9.98,
+    "lon": -84.19,
+    "flag": "🇨🇷"
+  },
+  {
+    "name": "Côte d'Ivoire",
+    "iso": "CI",
+    "dial": "+225",
+    "lat": 7.63,
+    "lon": -5.57,
+    "flag": "🇨🇮"
+  },
+  {
+    "name": "Croatia",
+    "iso": "HR",
+    "dial": "+385",
+    "lat": 45.08,
+    "lon": 16.4,
+    "flag": "🇭🇷"
+  },
+  {
+    "name": "Cuba",
+    "iso": "CU",
+    "dial": "+53",
+    "lat": 21.64,
+    "lon": -78.99,
+    "flag": "🇨🇺"
+  },
+  {
+    "name": "Curaçao",
+    "iso": "CW",
+    "dial": "+599",
+    "lat": 12.2,
+    "lon": -68.97,
+    "flag": "🇨🇼"
+  },
+  {
+    "name": "Cyprus",
+    "iso": "CY",
+    "dial": "+357",
+    "lat": 34.92,
+    "lon": 33.01,
+    "flag": "🇨🇾"
+  },
+  {
+    "name": "Denmark",
+    "iso": "DK",
+    "dial": "+45",
+    "lat": 55.98,
+    "lon": 10.04,
+    "flag": "🇩🇰"
+  },
+  {
+    "name": "Djibouti",
+    "iso": "DJ",
+    "dial": "+253",
+    "lat": 11.75,
+    "lon": 42.56,
+    "flag": "🇩🇯"
+  },
+  {
+    "name": "Dominica",
+    "iso": "DM",
+    "dial": "+1767",
+    "lat": 15.44,
+    "lon": -61.36,
+    "flag": "🇩🇲"
+  },
+  {
+    "name": "Ecuador",
+    "iso": "EC",
+    "dial": "+593",
+    "lat": -1.42,
+    "lon": -78.75,
+    "flag": "🇪🇨"
+  },
+  {
+    "name": "Egypt",
+    "iso": "EG",
+    "dial": "+20",
+    "lat": 26.46,
+    "lon": 29.88,
+    "flag": "🇪🇬"
+  },
+  {
+    "name": "El Salvador",
+    "iso": "SV",
+    "dial": "+503",
+    "lat": 13.74,
+    "lon": -88.87,
+    "flag": "🇸🇻"
+  },
+  {
+    "name": "Eritrea",
+    "iso": "ER",
+    "dial": "+291",
+    "lat": 15.36,
+    "lon": 38.86,
+    "flag": "🇪🇷"
+  },
+  {
+    "name": "Estonia",
+    "iso": "EE",
+    "dial": "+372",
+    "lat": 58.67,
+    "lon": 25.55,
+    "flag": "🇪🇪"
+  },
+  {
+    "name": "Ethiopia",
+    "iso": "ET",
+    "dial": "+251",
+    "lat": 8.61,
+    "lon": 39.61,
+    "flag": "🇪🇹"
+  },
+  {
+    "name": "Fiji",
+    "iso": "FJ",
+    "dial": "+679",
+    "lat": -17.43,
+    "lon": 178.51,
+    "flag": "🇫🇯"
+  },
+  {
+    "name": "Finland",
+    "iso": "FI",
+    "dial": "+358",
+    "lat": 64.26,
+    "lon": 26.19,
+    "flag": "🇫🇮"
+  },
+  {
+    "name": "France",
+    "iso": "FR",
+    "dial": "+33",
+    "lat": 42.95,
+    "lon": -6.68,
+    "flag": "🇫🇷"
+  },
+  {
+    "name": "Gabon",
+    "iso": "GA",
+    "dial": "+241",
+    "lat": -0.59,
+    "lon": 11.79,
+    "flag": "🇬🇦"
+  },
+  {
+    "name": "Gambia",
+    "iso": "GM",
+    "dial": "+220",
+    "lat": 13.45,
+    "lon": -15.4,
+    "flag": "🇬🇲"
+  },
+  {
+    "name": "Georgia",
+    "iso": "GE",
+    "dial": "+995",
+    "lat": 42.17,
+    "lon": 43.52,
+    "flag": "🇬🇪"
+  },
+  {
+    "name": "Germany",
+    "iso": "DE",
+    "dial": "+49",
+    "lat": 51.05,
+    "lon": 10.36,
+    "flag": "🇩🇪"
+  },
+  {
+    "name": "Ghana",
+    "iso": "GH",
+    "dial": "+233",
+    "lat": 7.95,
+    "lon": -1.22,
+    "flag": "🇬🇭"
+  },
+  {
+    "name": "Greece",
+    "iso": "GR",
+    "dial": "+30",
+    "lat": 39.05,
+    "lon": 22.96,
+    "flag": "🇬🇷"
+  },
+  {
+    "name": "Greenland",
+    "iso": "GL",
+    "dial": "+299",
+    "lat": 73.08,
+    "lon": -41.81,
+    "flag": "🇬🇱"
+  },
+  {
+    "name": "Grenada",
+    "iso": "GD",
+    "dial": "+1473",
+    "lat": 12.12,
+    "lon": -61.68,
+    "flag": "🇬🇩"
+  },
+  {
+    "name": "Guam",
+    "iso": "GU",
+    "dial": "+1671",
+    "lat": 13.44,
+    "lon": 144.77,
+    "flag": "🇬🇺"
+  },
+  {
+    "name": "Guatemala",
+    "iso": "GT",
+    "dial": "+502",
+    "lat": 15.69,
+    "lon": -90.37,
+    "flag": "🇬🇹"
+  },
+  {
+    "name": "Guernsey",
+    "iso": "GG",
+    "dial": "+44",
+    "lat": 49.47,
+    "lon": -2.57,
+    "flag": "🇬🇬"
+  },
+  {
+    "name": "Guinea",
+    "iso": "GN",
+    "dial": "+224",
+    "lat": 10.44,
+    "lon": -10.93,
+    "flag": "🇬🇳"
+  },
+  {
+    "name": "Guinea-Bissau",
+    "iso": "GW",
+    "dial": "+245",
+    "lat": 12.05,
+    "lon": -14.95,
+    "flag": "🇬🇼"
+  },
+  {
+    "name": "Guyana",
+    "iso": "GY",
+    "dial": "+592",
+    "lat": 4.79,
+    "lon": -58.98,
+    "flag": "🇬🇾"
+  },
+  {
+    "name": "Haiti",
+    "iso": "HT",
+    "dial": "+509",
+    "lat": 18.93,
+    "lon": -72.69,
+    "flag": "🇭🇹"
+  },
+  {
+    "name": "Honduras",
+    "iso": "HN",
+    "dial": "+504",
+    "lat": 14.83,
+    "lon": -86.62,
+    "flag": "🇭🇳"
+  },
+  {
+    "name": "Hong Kong",
+    "iso": "HK",
+    "dial": "+852",
+    "lat": 22.4,
+    "lon": 114.11,
+    "flag": "🇭🇰"
+  },
+  {
+    "name": "Hungary",
+    "iso": "HU",
+    "dial": "+36",
+    "lat": 47.17,
+    "lon": 19.38,
+    "flag": "🇭🇺"
+  },
+  {
+    "name": "Iceland",
+    "iso": "IS",
+    "dial": "+354",
+    "lat": 65,
+    "lon": -18.58,
+    "flag": "🇮🇸"
+  },
+  {
+    "name": "India",
+    "iso": "IN",
+    "dial": "+91",
+    "lat": 22.78,
+    "lon": 79.56,
+    "flag": "🇮🇳"
+  },
+  {
+    "name": "Indonesia",
+    "iso": "ID",
+    "dial": "+62",
+    "lat": -2.26,
+    "lon": 117.18,
+    "flag": "🇮🇩"
+  },
+  {
+    "name": "Iran",
+    "iso": "IR",
+    "dial": "+98",
+    "lat": 32.53,
+    "lon": 54.44,
+    "flag": "🇮🇷"
+  },
+  {
+    "name": "Iraq",
+    "iso": "IQ",
+    "dial": "+964",
+    "lat": 33.01,
+    "lon": 43.77,
+    "flag": "🇮🇶"
+  },
+  {
+    "name": "Ireland",
+    "iso": "IE",
+    "dial": "+353",
+    "lat": 53.16,
+    "lon": -8.15,
+    "flag": "🇮🇪"
+  },
+  {
+    "name": "Isle of Man",
+    "iso": "IM",
+    "dial": "+44",
+    "lat": 54.22,
+    "lon": -4.54,
+    "flag": "🇮🇲"
+  },
+  {
+    "name": "Israel",
+    "iso": "IL",
+    "dial": "+972",
+    "lat": 31.45,
+    "lon": 35,
+    "flag": "🇮🇱"
+  },
+  {
+    "name": "Italy",
+    "iso": "IT",
+    "dial": "+39",
+    "lat": 42.72,
+    "lon": 12.2,
+    "flag": "🇮🇹"
+  },
+  {
+    "name": "Jamaica",
+    "iso": "JM",
+    "dial": "+1876",
+    "lat": 18.16,
+    "lon": -77.31,
+    "flag": "🇯🇲"
+  },
+  {
+    "name": "Japan",
+    "iso": "JP",
+    "dial": "+81",
+    "lat": 37.46,
+    "lon": 137.66,
+    "flag": "🇯🇵"
+  },
+  {
+    "name": "Jersey",
+    "iso": "JE",
+    "dial": "+44",
+    "lat": 49.22,
+    "lon": -2.13,
+    "flag": "🇯🇪"
+  },
+  {
+    "name": "Jordan",
+    "iso": "JO",
+    "dial": "+962",
+    "lat": 31.24,
+    "lon": 36.76,
+    "flag": "🇯🇴"
+  },
+  {
+    "name": "Kazakhstan",
+    "iso": "KZ",
+    "dial": "+7",
+    "lat": 48.36,
+    "lon": 67.25,
+    "flag": "🇰🇿"
+  },
+  {
+    "name": "Kenya",
+    "iso": "KE",
+    "dial": "+254",
+    "lat": 0.6,
+    "lon": 37.8,
+    "flag": "🇰🇪"
+  },
+  {
+    "name": "Kiribati",
+    "iso": "KI",
+    "dial": "+686",
+    "lat": 0.89,
+    "lon": -167.92,
+    "flag": "🇰🇮"
+  },
+  {
+    "name": "Kosovo",
+    "iso": "XK",
+    "dial": "+383",
+    "lat": 42.57,
+    "lon": 20.87,
+    "flag": "🇽🇰"
+  },
+  {
+    "name": "Kuwait",
+    "iso": "KW",
+    "dial": "+965",
+    "lat": 29.33,
+    "lon": 47.59,
+    "flag": "🇰🇼"
+  },
+  {
+    "name": "Kyrgyzstan",
+    "iso": "KG",
+    "dial": "+996",
+    "lat": 41.47,
+    "lon": 74.51,
+    "flag": "🇰🇬"
+  },
+  {
+    "name": "Laos",
+    "iso": "LA",
+    "dial": "+856",
+    "lat": 18.49,
+    "lon": 103.78,
+    "flag": "🇱🇦"
+  },
+  {
+    "name": "Latvia",
+    "iso": "LV",
+    "dial": "+371",
+    "lat": 56.86,
+    "lon": 24.92,
+    "flag": "🇱🇻"
+  },
+  {
+    "name": "Lebanon",
+    "iso": "LB",
+    "dial": "+961",
+    "lat": 33.92,
+    "lon": 35.88,
+    "flag": "🇱🇧"
+  },
+  {
+    "name": "Lesotho",
+    "iso": "LS",
+    "dial": "+266",
+    "lat": -29.58,
+    "lon": 28.23,
+    "flag": "🇱🇸"
+  },
+  {
+    "name": "Liberia",
+    "iso": "LR",
+    "dial": "+231",
+    "lat": 6.45,
+    "lon": -9.32,
+    "flag": "🇱🇷"
+  },
+  {
+    "name": "Libya",
+    "iso": "LY",
+    "dial": "+218",
+    "lat": 27.02,
+    "lon": 18.07,
+    "flag": "🇱🇾"
+  },
+  {
+    "name": "Liechtenstein",
+    "iso": "LI",
+    "dial": "+423",
+    "lat": 47.14,
+    "lon": 9.54,
+    "flag": "🇱🇮"
+  },
+  {
+    "name": "Lithuania",
+    "iso": "LT",
+    "dial": "+370",
+    "lat": 55.32,
+    "lon": 23.9,
+    "flag": "🇱🇹"
+  },
+  {
+    "name": "Luxembourg",
+    "iso": "LU",
+    "dial": "+352",
+    "lat": 49.77,
+    "lon": 6.07,
+    "flag": "🇱🇺"
+  },
+  {
+    "name": "Macedonia",
+    "iso": "MK",
+    "dial": "+389",
+    "lat": 41.6,
+    "lon": 21.68,
+    "flag": "🇲🇰"
+  },
+  {
+    "name": "Madagascar",
+    "iso": "MG",
+    "dial": "+261",
+    "lat": -19.32,
+    "lon": 46.74,
+    "flag": "🇲🇬"
+  },
+  {
+    "name": "Malawi",
+    "iso": "MW",
+    "dial": "+265",
+    "lat": -13.2,
+    "lon": 34.28,
+    "flag": "🇲🇼"
+  },
+  {
+    "name": "Malaysia",
+    "iso": "MY",
+    "dial": "+60",
+    "lat": 3.81,
+    "lon": 109.7,
+    "flag": "🇲🇾"
+  },
+  {
+    "name": "Maldives",
+    "iso": "MV",
+    "dial": "+960",
+    "lat": 3.73,
+    "lon": 73.46,
+    "flag": "🇲🇻"
+  },
+  {
+    "name": "Mali",
+    "iso": "ML",
+    "dial": "+223",
+    "lat": 17.32,
+    "lon": -3.59,
+    "flag": "🇲🇱"
+  },
+  {
+    "name": "Malta",
+    "iso": "MT",
+    "dial": "+356",
+    "lat": 35.92,
+    "lon": 14.41,
+    "flag": "🇲🇹"
+  },
+  {
+    "name": "Mauritania",
+    "iso": "MR",
+    "dial": "+222",
+    "lat": 20.22,
+    "lon": -10.37,
+    "flag": "🇲🇷"
+  },
+  {
+    "name": "Mauritius",
+    "iso": "MU",
+    "dial": "+230",
+    "lat": -20.28,
+    "lon": 57.57,
+    "flag": "🇲🇺"
+  },
+  {
+    "name": "Mexico",
+    "iso": "MX",
+    "dial": "+52",
+    "lat": 23.92,
+    "lon": -102.17,
+    "flag": "🇲🇽"
+  },
+  {
+    "name": "Micronesia",
+    "iso": "FM",
+    "dial": "+691",
+    "lat": 7.54,
+    "lon": 153.3,
+    "flag": "🇫🇲"
+  },
+  {
+    "name": "Moldova",
+    "iso": "MD",
+    "dial": "+373",
+    "lat": 47.19,
+    "lon": 28.47,
+    "flag": "🇲🇩"
+  },
+  {
+    "name": "Monaco",
+    "iso": "MC",
+    "dial": "+377",
+    "lat": 43.75,
+    "lon": 7.41,
+    "flag": "🇲🇨"
+  },
+  {
+    "name": "Mongolia",
+    "iso": "MN",
+    "dial": "+976",
+    "lat": 46.96,
+    "lon": 103.12,
+    "flag": "🇲🇳"
+  },
+  {
+    "name": "Montenegro",
+    "iso": "ME",
+    "dial": "+382",
+    "lat": 42.79,
+    "lon": 19.24,
+    "flag": "🇲🇪"
+  },
+  {
+    "name": "Montserrat",
+    "iso": "MS",
+    "dial": "+1664",
+    "lat": 16.74,
+    "lon": -62.19,
+    "flag": "🇲🇸"
+  },
+  {
+    "name": "Morocco",
+    "iso": "MA",
+    "dial": "+212",
+    "lat": 29.77,
+    "lon": -8.73,
+    "flag": "🇲🇦"
+  },
+  {
+    "name": "Mozambique",
+    "iso": "MZ",
+    "dial": "+258",
+    "lat": -17.2,
+    "lon": 35.6,
+    "flag": "🇲🇿"
+  },
+  {
+    "name": "Myanmar",
+    "iso": "MM",
+    "dial": "+95",
+    "lat": 21.11,
+    "lon": 96.49,
+    "flag": "🇲🇲"
+  },
+  {
+    "name": "Namibia",
+    "iso": "NA",
+    "dial": "+264",
+    "lat": -22.07,
+    "lon": 17.2,
+    "flag": "🇳🇦"
+  },
+  {
+    "name": "Nauru",
+    "iso": "NR",
+    "dial": "+674",
+    "lat": -0.52,
+    "lon": 166.93,
+    "flag": "🇳🇷"
+  },
+  {
+    "name": "Nepal",
+    "iso": "NP",
+    "dial": "+977",
+    "lat": 28.26,
+    "lon": 83.95,
+    "flag": "🇳🇵"
+  },
+  {
+    "name": "Netherlands",
+    "iso": "NL",
+    "dial": "+31",
+    "lat": 52.23,
+    "lon": 4.98,
+    "flag": "🇳🇱"
+  },
+  {
+    "name": "New Caledonia",
+    "iso": "NC",
+    "dial": "+687",
+    "lat": -21.3,
+    "lon": 165.68,
+    "flag": "🇳🇨"
+  },
+  {
+    "name": "New Zealand",
+    "iso": "NZ",
+    "dial": "+64",
+    "lat": -41.7,
+    "lon": 172.92,
+    "flag": "🇳🇿"
+  },
+  {
+    "name": "Nicaragua",
+    "iso": "NI",
+    "dial": "+505",
+    "lat": 12.85,
+    "lon": -85.03,
+    "flag": "🇳🇮"
+  },
+  {
+    "name": "Niger",
+    "iso": "NE",
+    "dial": "+227",
+    "lat": 17.41,
+    "lon": 9.33,
+    "flag": "🇳🇪"
+  },
+  {
+    "name": "Nigeria",
+    "iso": "NG",
+    "dial": "+234",
+    "lat": 9.59,
+    "lon": 8.08,
+    "flag": "🇳🇬"
+  },
+  {
+    "name": "Niue",
+    "iso": "NU",
+    "dial": "+683",
+    "lat": -19.05,
+    "lon": -169.87,
+    "flag": "🇳🇺"
+  },
+  {
+    "name": "Norfolk Island",
+    "iso": "NF",
+    "dial": "+672",
+    "lat": -29.05,
+    "lon": 167.95,
+    "flag": "🇳🇫"
+  },
+  {
+    "name": "North Korea",
+    "iso": "KP",
+    "dial": "+850",
+    "lat": 40.14,
+    "lon": 127.16,
+    "flag": "🇰🇵"
+  },
+  {
+    "name": "Norway",
+    "iso": "NO",
+    "dial": "+47",
+    "lat": 66.36,
+    "lon": 12.75,
+    "flag": "🇳🇴"
+  },
+  {
+    "name": "Oman",
+    "iso": "OM",
+    "dial": "+968",
+    "lat": 20.59,
+    "lon": 56.06,
+    "flag": "🇴🇲"
+  },
+  {
+    "name": "Pakistan",
+    "iso": "PK",
+    "dial": "+92",
+    "lat": 29.88,
+    "lon": 69.17,
+    "flag": "🇵🇰"
+  },
+  {
+    "name": "Palau",
+    "iso": "PW",
+    "dial": "+680",
+    "lat": 7.29,
+    "lon": 134.41,
+    "flag": "🇵🇼"
+  },
+  {
+    "name": "Palestine",
+    "iso": "PS",
+    "dial": "+970",
+    "lat": 31.92,
+    "lon": 35.2,
+    "flag": "🇵🇸"
+  },
+  {
+    "name": "Panama",
+    "iso": "PA",
+    "dial": "+507",
+    "lat": 8.52,
+    "lon": -80.12,
+    "flag": "🇵🇦"
+  },
+  {
+    "name": "Papua New Guinea",
+    "iso": "PG",
+    "dial": "+675",
+    "lat": -6.47,
+    "lon": 145.2,
+    "flag": "🇵🇬"
+  },
+  {
+    "name": "Paraguay",
+    "iso": "PY",
+    "dial": "+595",
+    "lat": -23.21,
+    "lon": -58.44,
+    "flag": "🇵🇾"
+  },
+  {
+    "name": "Peru",
+    "iso": "PE",
+    "dial": "+51",
+    "lat": -9.11,
+    "lon": -74.42,
+    "flag": "🇵🇪"
+  },
+  {
+    "name": "Philippines",
+    "iso": "PH",
+    "dial": "+63",
+    "lat": 11.73,
+    "lon": 122.92,
+    "flag": "🇵🇭"
+  },
+  {
+    "name": "Poland",
+    "iso": "PL",
+    "dial": "+48",
+    "lat": 52.11,
+    "lon": 19.42,
+    "flag": "🇵🇱"
+  },
+  {
+    "name": "Portugal",
+    "iso": "PT",
+    "dial": "+351",
+    "lat": 39.61,
+    "lon": -8.53,
+    "flag": "🇵🇹"
+  },
+  {
+    "name": "Puerto Rico",
+    "iso": "PR",
+    "dial": "+1",
+    "lat": 18.23,
+    "lon": -66.47,
+    "flag": "🇵🇷"
+  },
+  {
+    "name": "Qatar",
+    "iso": "QA",
+    "dial": "+974",
+    "lat": 25.3,
+    "lon": 51.18,
+    "flag": "🇶🇦"
+  },
+  {
+    "name": "Romania",
+    "iso": "RO",
+    "dial": "+40",
+    "lat": 45.85,
+    "lon": 24.98,
+    "flag": "🇷🇴"
+  },
+  {
+    "name": "Russia",
+    "iso": "RU",
+    "dial": "+7",
+    "lat": 66.03,
+    "lon": 95.64,
+    "flag": "🇷🇺"
+  },
+  {
+    "name": "Rwanda",
+    "iso": "RW",
+    "dial": "+250",
+    "lat": -1.99,
+    "lon": 29.92,
+    "flag": "🇷🇼"
+  },
+  {
+    "name": "Saint Helena",
+    "iso": "SH",
+    "dial": "+290",
+    "lat": -12.35,
+    "lon": -9.7,
+    "flag": "🇸🇭"
+  },
+  {
+    "name": "Saint Lucia",
+    "iso": "LC",
+    "dial": "+1758",
+    "lat": 13.89,
+    "lon": -60.97,
+    "flag": "🇱🇨"
+  },
+  {
+    "name": "Samoa",
+    "iso": "WS",
+    "dial": "+685",
+    "lat": -13.75,
+    "lon": -172.16,
+    "flag": "🇼🇸"
+  },
+  {
+    "name": "San Marino",
+    "iso": "SM",
+    "dial": "+378",
+    "lat": 43.94,
+    "lon": 12.46,
+    "flag": "🇸🇲"
+  },
+  {
+    "name": "Saudi Arabia",
+    "iso": "SA",
+    "dial": "+966",
+    "lat": 24.09,
+    "lon": 44.66,
+    "flag": "🇸🇦"
+  },
+  {
+    "name": "Senegal",
+    "iso": "SN",
+    "dial": "+221",
+    "lat": 14.36,
+    "lon": -14.47,
+    "flag": "🇸🇳"
+  },
+  {
+    "name": "Serbia",
+    "iso": "RS",
+    "dial": "+381",
+    "lat": 44.21,
+    "lon": 20.81,
+    "flag": "🇷🇸"
+  },
+  {
+    "name": "Seychelles",
+    "iso": "SC",
+    "dial": "+248",
+    "lat": -4.66,
+    "lon": 55.48,
+    "flag": "🇸🇨"
+  },
+  {
+    "name": "Sierra Leone",
+    "iso": "SL",
+    "dial": "+232",
+    "lat": 8.56,
+    "lon": -11.79,
+    "flag": "🇸🇱"
+  },
+  {
+    "name": "Singapore",
+    "iso": "SG",
+    "dial": "+65",
+    "lat": 1.36,
+    "lon": 103.82,
+    "flag": "🇸🇬"
+  },
+  {
+    "name": "Sint Maarten",
+    "iso": "SX",
+    "dial": "+1721",
+    "lat": 18.05,
+    "lon": -63.06,
+    "flag": "🇸🇽"
+  },
+  {
+    "name": "Slovakia",
+    "iso": "SK",
+    "dial": "+421",
+    "lat": 48.71,
+    "lon": 19.47,
+    "flag": "🇸🇰"
+  },
+  {
+    "name": "Slovenia",
+    "iso": "SI",
+    "dial": "+386",
+    "lat": 46.12,
+    "lon": 14.8,
+    "flag": "🇸🇮"
+  },
+  {
+    "name": "Somalia",
+    "iso": "SO",
+    "dial": "+252",
+    "lat": 4.74,
+    "lon": 45.68,
+    "flag": "🇸🇴"
+  },
+  {
+    "name": "South Africa",
+    "iso": "ZA",
+    "dial": "+27",
+    "lat": -28.97,
+    "lon": 25.19,
+    "flag": "🇿🇦"
+  },
+  {
+    "name": "South Korea",
+    "iso": "KR",
+    "dial": "+82",
+    "lat": 36.37,
+    "lon": 127.84,
+    "flag": "🇰🇷"
+  },
+  {
+    "name": "Spain",
+    "iso": "ES",
+    "dial": "+34",
+    "lat": 40.21,
+    "lon": -3.7,
+    "flag": "🇪🇸"
+  },
+  {
+    "name": "Sri Lanka",
+    "iso": "LK",
+    "dial": "+94",
+    "lat": 7.61,
+    "lon": 80.7,
+    "flag": "🇱🇰"
+  },
+  {
+    "name": "Sudan",
+    "iso": "SD",
+    "dial": "+249",
+    "lat": 15.97,
+    "lon": 29.91,
+    "flag": "🇸🇩"
+  },
+  {
+    "name": "Suriname",
+    "iso": "SR",
+    "dial": "+597",
+    "lat": 4.13,
+    "lon": -55.91,
+    "flag": "🇸🇷"
+  },
+  {
+    "name": "Sweden",
+    "iso": "SE",
+    "dial": "+46",
+    "lat": 62.38,
+    "lon": 16.27,
+    "flag": "🇸🇪"
+  },
+  {
+    "name": "Switzerland",
+    "iso": "CH",
+    "dial": "+41",
+    "lat": 46.8,
+    "lon": 8.21,
+    "flag": "🇨🇭"
+  },
+  {
+    "name": "Syria",
+    "iso": "SY",
+    "dial": "+963",
+    "lat": 35.02,
+    "lon": 38.49,
+    "flag": "🇸🇾"
+  },
+  {
+    "name": "Taiwan",
+    "iso": "TW",
+    "dial": "+886",
+    "lat": 23.75,
+    "lon": 120.95,
+    "flag": "🇹🇼"
+  },
+  {
+    "name": "Tajikistan",
+    "iso": "TJ",
+    "dial": "+992",
+    "lat": 38.54,
+    "lon": 71.03,
+    "flag": "🇹🇯"
+  },
+  {
+    "name": "Tanzania",
+    "iso": "TZ",
+    "dial": "+255",
+    "lat": -6.27,
+    "lon": 34.8,
+    "flag": "🇹🇿"
+  },
+  {
+    "name": "Thailand",
+    "iso": "TH",
+    "dial": "+66",
+    "lat": 15.08,
+    "lon": 101,
+    "flag": "🇹🇭"
+  },
+  {
+    "name": "Timor-Leste",
+    "iso": "TL",
+    "dial": "+670",
+    "lat": -8.83,
+    "lon": 125.85,
+    "flag": "🇹🇱"
+  },
+  {
+    "name": "Togo",
+    "iso": "TG",
+    "dial": "+228",
+    "lat": 8.52,
+    "lon": 0.96,
+    "flag": "🇹🇬"
+  },
+  {
+    "name": "Tonga",
+    "iso": "TO",
+    "dial": "+676",
+    "lat": -20.42,
+    "lon": -174.8,
+    "flag": "🇹🇴"
+  },
+  {
+    "name": "Trinidad and Tobago",
+    "iso": "TT",
+    "dial": "+1868",
+    "lat": 10.46,
+    "lon": -61.27,
+    "flag": "🇹🇹"
+  },
+  {
+    "name": "Tunisia",
+    "iso": "TN",
+    "dial": "+216",
+    "lat": 34.09,
+    "lon": 9.56,
+    "flag": "🇹🇳"
+  },
+  {
+    "name": "Turkey",
+    "iso": "TR",
+    "dial": "+90",
+    "lat": 39.14,
+    "lon": 35.17,
+    "flag": "🇹🇷"
+  },
+  {
+    "name": "Turkmenistan",
+    "iso": "TM",
+    "dial": "+993",
+    "lat": 39.13,
+    "lon": 59.45,
+    "flag": "🇹🇲"
+  },
+  {
+    "name": "Uganda",
+    "iso": "UG",
+    "dial": "+256",
+    "lat": 1.27,
+    "lon": 32.37,
+    "flag": "🇺🇬"
+  },
+  {
+    "name": "Ukraine",
+    "iso": "UA",
+    "dial": "+380",
+    "lat": 49.2,
+    "lon": 31.32,
+    "flag": "🇺🇦"
+  },
+  {
+    "name": "United Arab Emirates",
+    "iso": "AE",
+    "dial": "+971",
+    "lat": 23.91,
+    "lon": 54.29,
+    "flag": "🇦🇪"
+  },
+  {
+    "name": "United Kingdom",
+    "iso": "GB",
+    "dial": "+44",
+    "lat": 54.01,
+    "lon": -2.76,
+    "flag": "🇬🇧"
+  },
+  {
+    "name": "Uruguay",
+    "iso": "UY",
+    "dial": "+598",
+    "lat": -32.79,
+    "lon": -56.03,
+    "flag": "🇺🇾"
+  },
+  {
+    "name": "Uzbekistan",
+    "iso": "UZ",
+    "dial": "+998",
+    "lat": 41.78,
+    "lon": 63.3,
+    "flag": "🇺🇿"
+  },
+  {
+    "name": "Vanuatu",
+    "iso": "VU",
+    "dial": "+678",
+    "lat": -16.22,
+    "lon": 167.68,
+    "flag": "🇻🇺"
+  },
+  {
+    "name": "Venezuela",
+    "iso": "VE",
+    "dial": "+58",
+    "lat": 7.12,
+    "lon": -66.17,
+    "flag": "🇻🇪"
+  },
+  {
+    "name": "Vietnam",
+    "iso": "VN",
+    "dial": "+84",
+    "lat": 16.54,
+    "lon": 106.35,
+    "flag": "🇻🇳"
+  },
+  {
+    "name": "Yemen",
+    "iso": "YE",
+    "dial": "+967",
+    "lat": 15.92,
+    "lon": 47.57,
+    "flag": "🇾🇪"
+  },
+  {
+    "name": "Zambia",
+    "iso": "ZM",
+    "dial": "+260",
+    "lat": -13.46,
+    "lon": 27.81,
+    "flag": "🇿🇲"
+  },
+  {
+    "name": "Zimbabwe",
+    "iso": "ZW",
+    "dial": "+263",
+    "lat": -19,
+    "lon": 29.85,
+    "flag": "🇿🇼"
+  }
+]

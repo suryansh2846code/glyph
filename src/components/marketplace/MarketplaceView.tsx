@@ -13,8 +13,6 @@ import {
   Grid,
   Heart,
   Globe,
-  Battery,
-  Wifi,
   ShieldCheck,
   ArrowRight
 } from 'lucide-react'
@@ -1024,6 +1022,15 @@ const ONBOARDING_COUNTRIES = [
 ]
 
 
+const ONBOARDING_CONTINENT_CENTERS: Record<string, { lon: number; lat: number }> = {
+  GLOBAL: { lon: 0, lat: 10 },
+  NA: { lon: -100, lat: 40 },
+  SA: { lon: -60, lat: -15 },
+  EU: { lon: 15, lat: 50 },
+  AF: { lon: 20, lat: 5 },
+  AS: { lon: 100, lat: 25 }
+}
+
 const ONBOARDING_COUNTRY_CENTERS: Record<string, { lon: number; lat: number }> = {
   US: { lon: -100, lat: 38 },
   CA: { lon: -105, lat: 58 },
@@ -1128,9 +1135,92 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const [phone, setPhone] = useState('')
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
+  const [mapLoaded, setMapLoaded] = useState(false)
+  const landPointsRef = useRef<{ lon: number; lat: number }[]>([])
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const particlesRef = useRef<OnboardingParticle[]>([])
+
+  // Load and sample map image offscreen using latitudinal rings for premium quality
+  useEffect(() => {
+    const img = new Image()
+    img.src = '/worldmap2.jpg'
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const tempCanvas = document.createElement('canvas')
+      const tempCtx = tempCanvas.getContext('2d')
+      if (!tempCtx) return
+
+      const w = img.naturalWidth || img.width
+      const h = img.naturalHeight || img.height
+      tempCanvas.width = w
+      tempCanvas.height = h
+      tempCtx.drawImage(img, 0, 0)
+
+      try {
+        const imgData = tempCtx.getImageData(0, 0, w, h)
+        const data = imgData.data
+        const pts: { lon: number; lat: number }[] = []
+
+        // Image Flat Map boundaries: X in [142, 906] (width 765), Y in [255, 647] (height 393)
+        const x_start = 142, x_end = 906
+        const y_start = 255, y_end = 647
+        const map_w = x_end - x_start + 1
+        const map_h = y_end - y_start + 1
+
+        const lat_min = -66, lat_max = 81
+        const lon_min = -180, lon_max = 180
+
+        // Sample along latitude rings
+        for (let lat = -75; lat <= 80; lat += 2.0) {
+          const rLat = (lat * Math.PI) / 180
+          const cosLat = Math.cos(rLat)
+          
+          // Density along the ring is proportional to cos(lat)
+          // We want around 220 points on the equator
+          const numPoints = Math.round(220 * cosLat)
+          if (numPoints < 1) continue
+
+          for (let i = 0; i < numPoints; i++) {
+            const lon = -180 + (i / numPoints) * 360
+
+            // Map (lon, lat) to image pixel coordinate (x, y)
+            const imgX = Math.round(x_start + (lon - lon_min) / (lon_max - lon_min) * (map_w - 1))
+            const imgY = Math.round(y_start + (lat_max - lat) / (lat_max - lat_min) * (map_h - 1))
+
+            // Perform neighborhood check (3x3) to decide if it is land
+            let isLand = false
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                const px = imgX + dx
+                const py = imgY + dy
+                if (px >= 0 && px < w && py >= 0 && py < h) {
+                  const idx = (py * w + px) * 4
+                  const r = data[idx]
+                  const g = data[idx + 1]
+                  const b = data[idx + 2]
+                  if (r < 120 && g < 120 && b < 120) {
+                    isLand = true
+                    break
+                  }
+                }
+              }
+              if (isLand) break
+            }
+
+            if (isLand) {
+              pts.push({ lon, lat })
+            }
+          }
+        }
+
+        landPointsRef.current = pts
+        setMapLoaded(true)
+      } catch (err) {
+        console.error("Error reading map image data, falling back", err)
+      }
+    }
+  }, [])
 
   // Camera settings
   const camZoom = useRef(1.0)
@@ -1155,35 +1245,35 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
   const renderContinentIcon = (id: string) => {
     switch (id) {
       case 'GLOBAL':
-        return <Globe className="h-3.5 w-3.5" />
+        return <Globe className="h-6 w-6 stroke-[1.2]" />
       case 'NA':
         return (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-            <path d="M6 4h8l2 3-1 2-3 1-2 4-2-2-2-8z" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-6 h-6">
+            <path d="M3 4c1-1 3.5 0 4.5 1s2.5 2 3.5.5 1.5-2.5 3.5-1.5 1.5 2.5.5 4.5-.5 2.5-1.5 3.5-2.5 1-2.5 2.5.5 3.5-1 4.5c-.8.2-1.5-1-2.5-1s-2.5 1-3.5-1-1-2.5-2.5-3.5c-1-.5-1.5-.5-1.5-2s1-3 2-6z" />
           </svg>
         )
       case 'SA':
         return (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-            <path d="M9 5h5l-2 5-3 6-2-4 2-7z" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-6 h-6">
+            <path d="M8 4c1.5-1 3.5 0 5 1.5s2 4.5 1.2 7c-.8 2.5-2.5 5-3.5 6.5s-2 1.5-2-1c0-2 .8-3.5 0-5s-2-2.5-2-4c0-1.5 1-3 1.3-5z" />
           </svg>
         )
       case 'EU':
         return (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-            <path d="M5 8h4l2-2 3 1 3-2 1 3-3 2v2l-3-1-3 2-5-5z" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-6 h-6">
+            <path d="M3 9c1.5-1.5 4-.8 5.5-.8s2.5 1.5 3.5.8 1.5-1.5 3-.8 1.5 1.5.8 3c-.8.8-2.5.8-2.5 2.5s-1.5 1.5-3 .8c-1.5 0-2.5-1.5-4-.8s-2.5 1.5-3.5-1.5c0-1.5 0-3 .2-4.2z" />
           </svg>
         )
       case 'AF':
         return (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-            <path d="M7 6h7l3 3-1 3-3 4-2-3-4-7z" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-6 h-6">
+            <path d="M5.5 5c2.5-1.5 6-.8 7.5.8s2.5 3.5 1.7 6c-.8 1.5.8 3.5 0 5s-2.5 2.5-4 .8c-1.5-.8-1.5-2.5-2.5-3.5S5 12 5 9.5c0-2.5 0-4 .5-4.5z" />
           </svg>
         )
       case 'AS':
         return (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-            <path d="M4 6h12l3 3-1 3 3 2-2 3-8-1-7-10z" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-6 h-6">
+            <path d="M3 9c1.5-2.5 4-2.5 6.5-.8s3 3.5 4.5 2c1.5-.8 2.5-2.5 3.5-.8s-.8 3.5-2.5 4.5-3 .8-4 2.5c-.8 1.7-2.5 1.7-3.5 0s-1.7-1.7-3.5-2.5c-1.7-.8-2.5-1.7-1.7-4.2z" />
           </svg>
         )
       default:
@@ -1191,84 +1281,121 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
     }
   }
 
-  // Initialize particles once (or when particleCount changes)
+  // Initialize particles once (or when particleCount/mapLoaded changes)
   useEffect(() => {
     const list: OnboardingParticle[] = []
-    
-    // 60% particles for onboarding countries, 40% for background/continents
-    const countryCount = Math.floor(particleCount * 0.6)
-    const bgCount = particleCount - countryCount
+    const pts = landPointsRef.current
 
-    // Generate onboarding country particles
-    for (let i = 0; i < countryCount; i++) {
-      const c = ONBOARDING_COUNTRIES[i % ONBOARDING_COUNTRIES.length]
-      const center = ONBOARDING_COUNTRY_CENTERS[c.code]
-      const poly = COUNTRY_POLYGONS[c.code]
+    if (pts.length > 0) {
+      // Precise sampling from loaded image
+      const step = pts.length / particleCount
+      for (let i = 0; i < particleCount; i++) {
+        const pt = pts[Math.min(pts.length - 1, Math.floor(i * step))]
+        const lon = pt.lon
+        const lat = pt.lat
 
-      let lon = center.lon
-      let lat = center.lat
-      if (poly) {
-        const bounds = getPolygonBounds(poly)
-        for (let attempt = 0; attempt < 30; attempt++) {
-          const testLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon)
-          const testLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat)
-          if (isPointInPolygon(testLon, testLat, poly)) {
-            lon = testLon
-            lat = testLat
-            break
+        // Classify particle using polygons
+        const country = ONBOARDING_COUNTRIES.find(c => {
+          const poly = COUNTRY_POLYGONS[c.code]
+          return poly && isPointInPolygon(lon, lat, poly)
+        })
+
+        let continent = ''
+        if (country) {
+          continent = country.continent
+        } else {
+          continent = Object.keys(CONTINENT_POLYGONS).find(key => {
+            const poly = CONTINENT_POLYGONS[key]
+            return poly && isPointInPolygon(lon, lat, poly)
+          }) || ''
+        }
+
+        list.push({
+          x: (Math.random() - 0.5) * 300,
+          y: (Math.random() - 0.5) * 300,
+          z: (Math.random() - 0.5) * 300,
+          tx: 0, ty: 0, tz: 0,
+          lon,
+          lat,
+          continent,
+          country: country ? country.code : '',
+          idx: i
+        })
+      }
+    } else {
+      // Procedural fallback
+      const countryCount = Math.floor(particleCount * 0.6)
+      const bgCount = particleCount - countryCount
+
+      for (let i = 0; i < countryCount; i++) {
+        const c = ONBOARDING_COUNTRIES[i % ONBOARDING_COUNTRIES.length]
+        const center = ONBOARDING_COUNTRY_CENTERS[c.code]
+        const poly = COUNTRY_POLYGONS[c.code]
+
+        let lon = center.lon
+        let lat = center.lat
+        if (poly) {
+          const bounds = getPolygonBounds(poly)
+          for (let attempt = 0; attempt < 30; attempt++) {
+            const testLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon)
+            const testLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat)
+            if (isPointInPolygon(testLon, testLat, poly)) {
+              lon = testLon
+              lat = testLat
+              break
+            }
           }
         }
+
+        list.push({
+          x: (Math.random() - 0.5) * 300,
+          y: (Math.random() - 0.5) * 300,
+          z: (Math.random() - 0.5) * 300,
+          tx: 0, ty: 0, tz: 0,
+          lon,
+          lat,
+          continent: c.continent,
+          country: c.code,
+          idx: i
+        })
       }
 
-      list.push({
-        x: (Math.random() - 0.5) * 300,
-        y: (Math.random() - 0.5) * 300,
-        z: (Math.random() - 0.5) * 300,
-        tx: 0, ty: 0, tz: 0,
-        lon,
-        lat,
-        continent: c.continent,
-        country: c.code,
-        idx: i
-      })
-    }
+      const continentKeys = ['NA', 'SA', 'EU', 'AF', 'AS', 'AU']
+      for (let i = 0; i < bgCount; i++) {
+        const cont = continentKeys[i % continentKeys.length]
+        const poly = CONTINENT_POLYGONS[cont]
 
-    // Generate background continent particles
-    const continentKeys = ['NA', 'SA', 'EU', 'AF', 'AS', 'AU']
-    for (let i = 0; i < bgCount; i++) {
-      const cont = continentKeys[i % continentKeys.length]
-      const poly = CONTINENT_POLYGONS[cont]
-
-      let lon = 0
-      let lat = 0
-      if (poly) {
-        const bounds = getPolygonBounds(poly)
-        for (let attempt = 0; attempt < 30; attempt++) {
-          const testLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon)
-          const testLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat)
-          if (isPointInPolygon(testLon, testLat, poly)) {
-            lon = testLon
-            lat = testLat
-            break
+        let lon = 0
+        let lat = 0
+        if (poly) {
+          const bounds = getPolygonBounds(poly)
+          for (let attempt = 0; attempt < 30; attempt++) {
+            const testLon = bounds.minLon + Math.random() * (bounds.maxLon - bounds.minLon)
+            const testLat = bounds.minLat + Math.random() * (bounds.maxLat - bounds.minLat)
+            if (isPointInPolygon(testLon, testLat, poly)) {
+              lon = testLon
+              lat = testLat
+              break
+            }
           }
         }
-      }
 
-      list.push({
-        x: (Math.random() - 0.5) * 300,
-        y: (Math.random() - 0.5) * 300,
-        z: (Math.random() - 0.5) * 300,
-        tx: 0, ty: 0, tz: 0,
-        lon,
-        lat,
-        continent: cont,
-        country: '', // Empty country code so it doesn't highlight
-        idx: countryCount + i
-      })
+        list.push({
+          x: (Math.random() - 0.5) * 300,
+          y: (Math.random() - 0.5) * 300,
+          z: (Math.random() - 0.5) * 300,
+          tx: 0, ty: 0, tz: 0,
+          lon,
+          lat,
+          continent: cont,
+          country: '', // Empty country code so it doesn't highlight
+          idx: countryCount + i
+        })
+      }
     }
 
     particlesRef.current = list
-  }, [particleCount])
+  }, [particleCount, mapLoaded])
 
   // Morph targets calculation whenever selection changes
   useEffect(() => {
@@ -1278,7 +1405,16 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
       camZoom.current = 1.0
       camOffX.current = 0
       camOffY.current = 0
-      camAngleX.current = 0.2
+
+      let targetLat = -12 // default tilt looking from above
+      if (selectedCountry) {
+        const center = ONBOARDING_COUNTRY_CENTERS[selectedCountry]
+        if (center) targetLat = center.lat
+      } else if (selectedContinent && selectedContinent !== 'GLOBAL') {
+        const center = ONBOARDING_CONTINENT_CENTERS[selectedContinent]
+        if (center) targetLat = center.lat
+      }
+      camAngleX.current = - (targetLat * Math.PI) / 180
     } else {
       // Keep the whole flat map visible and centered
       camZoom.current = 0.65
@@ -1304,9 +1440,8 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
         p.tz = 0
       }
     })
-  }, [projectionMode, selectedContinent, selectedCountry, particleCount])
+  }, [projectionMode, selectedContinent, selectedCountry, particleCount, mapLoaded])
 
-  // Canvas render loop
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -1332,9 +1467,16 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
       if (isGlobe) {
         if (selectedCountry) {
           const center = ONBOARDING_COUNTRY_CENTERS[selectedCountry]
-          const targetRot = (center.lon * Math.PI) / 180
-          // Interpolate rotation to center the country
-          autoRot += (targetRot - autoRot) * 0.08
+          if (center) {
+            const targetRot = (center.lon * Math.PI) / 180
+            autoRot += (targetRot - autoRot) * 0.08
+          }
+        } else if (selectedContinent && selectedContinent !== 'GLOBAL') {
+          const center = ONBOARDING_CONTINENT_CENTERS[selectedContinent]
+          if (center) {
+            const targetRot = (center.lon * Math.PI) / 180
+            autoRot += (targetRot - autoRot) * 0.08
+          }
         } else if (projectionMode === '3d-spin' && autoRotate) {
           autoRot += 0.004
         }
@@ -1349,6 +1491,15 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
 
       const zScale = currentZoom.current
       const particles = particlesRef.current
+
+      // Draw globe outline circle
+      if (isGlobe) {
+        ctx.beginPath()
+        ctx.arc(cx, cy, 85 * zScale, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+        ctx.lineWidth = 0.8
+        ctx.stroke()
+      }
 
       const projected = particles.map(p => {
         p.x += (p.tx - p.x) * 0.1
@@ -1378,7 +1529,8 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
         return { px, py, pz: finalZ, p }
       })
 
-      projected.sort((a, b) => b.pz - a.pz)
+      // Sort from back to front (painter's algorithm)
+      projected.sort((a, b) => a.pz - b.pz)
 
       projected.forEach(({ px, py, pz, p }) => {
         const isHighlight = selectedCountry 
@@ -1396,9 +1548,15 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
             radius = 2.0
             isBright = true
           } else {
-            baseAlpha = 0.06 + normZ * 0.35
-            radius = 0.6 + normZ * 1.0
+            baseAlpha = 0.05 + normZ * 0.35
+            radius = 0.5 + normZ * 1.0
             isBright = false
+          }
+
+          // Back-side point culling/fading
+          if (pz < 0) {
+            baseAlpha = isHighlight ? 0.15 : 0.03
+            radius = isHighlight ? 1.0 : 0.4
           }
         } else {
           baseAlpha = isHighlight ? 0.95 : 0.08
@@ -1415,7 +1573,7 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
               ctx.arc(px, py, radius * 3.2, 0, Math.PI * 2)
               ctx.fill()
               ctx.beginPath()
-              ctx.fillStyle = '#ffffff'
+              ctx.fillStyle = `rgba(255, 255, 255, ${pz < 0 ? 0.2 : 0.95})`
               ctx.arc(px, py, radius, 0, Math.PI * 2)
             } else {
               ctx.fillStyle = `rgba(255, 255, 255, ${baseAlpha})`
@@ -1424,17 +1582,17 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
             ctx.fill()
           } 
           else if (renderStyle === 'dotted') {
-            ctx.fillStyle = isBright ? highlightColor : 'rgba(255, 255, 255, 0.1)'
-            ctx.arc(px, py, isBright ? 2.2 : 0.8, 0, Math.PI * 2)
+            ctx.fillStyle = isBright ? highlightColor : `rgba(255, 255, 255, ${baseAlpha * 0.7})`
+            ctx.arc(px, py, radius * (isBright ? 1.25 : 0.8), 0, Math.PI * 2)
             ctx.fill()
           } 
           else if (renderStyle === 'halftone') {
             const mod = 0.4 + 0.6 * Math.sin(p.idx * 0.5)
-            const rad = (isBright ? 3.0 : 0.9) * Math.abs(mod)
-            ctx.fillStyle = isBright ? highlightColor : '#333333'
-            ctx.arc(px, py, rad, 0, Math.PI * 2)
+            const rad = radius * (isBright ? 1.6 : 0.9) * Math.abs(mod)
+            ctx.fillStyle = isBright ? highlightColor : `rgba(255, 255, 255, ${baseAlpha * 0.35})`
+            ctx.arc(px, py, Math.max(0.3, rad), 0, Math.PI * 2)
             ctx.fill()
-            if (isBright) {
+            if (isBright && pz >= 0) {
               ctx.beginPath()
               ctx.fillStyle = '#ffffff'
               ctx.arc(px, py, rad * 0.4, 0, Math.PI * 2)
@@ -1442,8 +1600,8 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
             }
           } 
           else { // minimalist
-            ctx.fillStyle = isBright ? highlightColor : 'rgba(255, 255, 255, 0.05)'
-            ctx.arc(px, py, isBright ? 1.5 : 0.5, 0, Math.PI * 2)
+            ctx.fillStyle = isBright ? highlightColor : `rgba(255, 255, 255, ${baseAlpha * 0.4})`
+            ctx.arc(px, py, radius * (isBright ? 1.0 : 0.6), 0, Math.PI * 2)
             ctx.fill()
           }
         }
@@ -1459,9 +1617,6 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
   const handleContinentSelect = (id: string) => {
     setSelectedContinent(id)
     setSelectedCountry(null)
-    if (id !== 'GLOBAL') {
-      setProjectionMode('2d-map')
-    }
   }
 
   const handleCountrySelect = (code: string) => {
@@ -1477,221 +1632,215 @@ function PhoneOnboardingPreview({ props }: { props: Record<string, any> }) {
     : ONBOARDING_COUNTRIES.filter(c => c.continent === selectedContinent)
 
   return (
-    <div 
-      className="relative w-[300px] h-[550px] rounded-[2.5rem] border-[6px] border-zinc-900 bg-[#0c0c0e] overflow-hidden flex flex-col justify-between select-none transition-all duration-300"
-      style={{ boxShadow: `0 0 25px rgba(${themeRgb}, 0.15), 0 20px 40px rgba(0,0,0,0.8)` }}
-    >
-      
-      {/* Notch */}
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4.5 bg-zinc-900 rounded-full z-30 flex items-center justify-between px-3">
-        <div className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
-        <div className="w-2.5 h-1 rounded-full bg-zinc-800" />
-      </div>
-
-      {/* Mini status bar */}
-      <div className="h-8 pt-3 px-4 flex justify-between items-center text-[8px] text-zinc-500 font-semibold font-mono z-20">
-        <span>12:20</span>
-        <div className="flex items-center gap-1">
-          <Wifi className="h-2.5 w-2.5" />
-          <Battery className="h-2.5 w-2.5 text-zinc-500" />
-        </div>
-      </div>
-
-      {/* Core scroll content */}
-      <div className="flex-1 flex flex-col justify-between px-4 pt-1 pb-4 z-10 overflow-y-auto overflow-x-hidden scrollbar-none">
-        
-        <div className="text-center">
-          <h2 className="text-sm font-bold tracking-tight text-zinc-200">Enter your phone</h2>
-          <p className="text-[10px] text-zinc-500 mt-0.5 font-light">Select your country and number</p>
-        </div>
-
-        {/* 3D globe visualization canvas viewport */}
-        <div className="relative w-full h-[160px] my-1 bg-gradient-to-b from-transparent to-black/40 flex items-center justify-center">
-          <canvas
-            ref={canvasRef}
-            width={260}
-            height={160}
-            className="w-full h-full block cursor-pointer active:scale-[0.99] transition-transform"
-            onClick={() => {
-              setSelectedContinent('GLOBAL')
-              setSelectedCountry(null)
-            }}
-          />
-          {selectedContinent !== 'GLOBAL' && (
-            <button
+    <div className="w-full flex items-center justify-center p-4 md:p-8 bg-zinc-950/20 text-white select-none">
+      <div 
+        className="relative w-full max-w-4xl bg-zinc-900/30 border border-zinc-800/80 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 md:gap-12 shadow-2xl backdrop-blur-md transition-all duration-300"
+        style={{ 
+          boxShadow: `0 0 40px rgba(${themeRgb}, 0.05), 0 20px 50px rgba(0, 0, 0, 0.5)`
+        }}
+      >
+        {/* Left Side: interactive 3D canvas viewport */}
+        <div className="flex-1 w-full flex flex-col items-center justify-center relative">
+          <div className="relative w-full aspect-square max-w-[340px] bg-gradient-to-b from-transparent to-black/30 rounded-2xl flex items-center justify-center border border-zinc-900/60 overflow-hidden">
+            <canvas
+              ref={canvasRef}
+              width={340}
+              height={340}
+              className="w-full h-full block cursor-pointer active:scale-[0.99] transition-transform"
               onClick={() => {
                 setSelectedContinent('GLOBAL')
                 setSelectedCountry(null)
               }}
-              className="absolute top-1.5 right-1.5 px-2 py-0.5 text-[8px] font-semibold bg-zinc-900/90 border border-zinc-800 rounded-full text-zinc-400 hover:text-zinc-200 transition-colors"
-            >
-              Reset
-            </button>
-          )}
-          <div className="absolute bottom-1 left-2 text-[8px] font-mono text-zinc-600 uppercase tracking-widest pointer-events-none">
-            {selectedCountry
-              ? `Country: ${selectedCountry}`
-              : selectedContinent === 'GLOBAL'
-                ? 'Globe Mode'
-                : `Region: ${selectedContinent}`}
+            />
+            {selectedContinent !== 'GLOBAL' && (
+              <button
+                onClick={() => {
+                  setSelectedContinent('GLOBAL')
+                  setSelectedCountry(null)
+                }}
+                className="absolute top-3 right-3 px-2.5 py-1 text-[9px] font-semibold bg-zinc-900/90 border border-zinc-800 rounded-full text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                Reset
+              </button>
+            )}
+            <div className="absolute bottom-2 left-3 text-[9px] font-mono text-zinc-650 uppercase tracking-widest pointer-events-none">
+              {selectedCountry
+                ? `Country: ${selectedCountry}`
+                : selectedContinent === 'GLOBAL'
+                  ? 'Globe Mode'
+                  : `Region: ${selectedContinent}`}
+            </div>
           </div>
-        </div>
 
-        {/* Projection Mode Selector */}
-        <div className="flex justify-center bg-zinc-950/60 p-0.5 rounded-lg border border-zinc-900/80 my-1">
-          {[
-            { id: '3d-spin', label: '3D Spin' },
-            { id: '3d-static', label: '3D Static' },
-            { id: '2d-map', label: '2D Map' }
-          ].map(mode => (
-            <button
-              key={mode.id}
-              onClick={() => {
-                setProjectionMode(mode.id as any)
-                if (mode.id === '2d-map') {
-                  if (!selectedCountry) {
+          {/* Projection Mode Selector */}
+          <div className="w-full max-w-[340px] flex justify-center bg-zinc-950/60 p-0.5 rounded-lg border border-zinc-900/80 mt-3.5">
+            {[
+              { id: '3d-spin', label: '3D Spin' },
+              { id: '3d-static', label: '3D Static' },
+              { id: '2d-map', label: '2D Map' }
+            ].map(mode => (
+              <button
+                key={mode.id}
+                onClick={() => {
+                  setProjectionMode(mode.id as any)
+                  if (mode.id === '2d-map') {
+                    if (!selectedCountry) {
+                      setSelectedContinent('GLOBAL')
+                    }
+                  } else {
                     setSelectedContinent('GLOBAL')
                   }
-                } else {
-                  setSelectedContinent('GLOBAL')
-                }
-              }}
-              className={cn(
-                "flex-1 py-1 rounded-md text-[9px] font-bold transition-all duration-200",
-                projectionMode === mode.id
-                  ? 'bg-zinc-800 text-zinc-100 shadow-sm shadow-black/40'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              )}
-            >
-              {mode.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Sliders */}
-        <div className="w-full space-y-2">
-          {/* Continent Horizontal selector list */}
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-            {ONBOARDING_CONTINENTS.map(c => {
-              const isActive = selectedContinent === c.id
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => handleContinentSelect(c.id)}
-                  className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-semibold border transition-all duration-200"
-                  style={isActive ? {
-                    borderColor: highlightColor,
-                    color: '#ffffff',
-                    backgroundColor: `rgba(${themeRgb}, 0.12)`,
-                    boxShadow: `0 0 8px rgba(${themeRgb}, 0.3)`
-                  } : {
-                    borderColor: 'rgba(255,255,255,0.05)',
-                    color: '#a1a1aa',
-                    backgroundColor: 'rgba(24, 24, 27, 0.6)'
-                  }}
-                >
-                  {renderContinentIcon(c.id)}
-                  <span>{c.label}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Countries chips list */}
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-            {filteredCountries.map(c => {
-              const isActive = selectedCountry === c.code
-              return (
-                <button
-                  key={c.code}
-                  onClick={() => handleCountrySelect(c.code)}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-medium border transition-all duration-200"
-                  style={isActive ? {
-                    borderColor: highlightColor,
-                    color: '#ffffff',
-                    backgroundColor: `rgba(${themeRgb}, 0.12)`,
-                    boxShadow: `0 0 10px rgba(${themeRgb}, 0.3)`
-                  } : {
-                    borderColor: 'rgba(255,255,255,0.05)',
-                    color: '#a1a1aa',
-                    backgroundColor: 'rgba(24, 24, 27, 0.4)'
-                  }}
-                >
-                  <span>{c.flag}</span>
-                  <span>{c.name}</span>
-                </button>
-              )
-            })}
+                }}
+                className={cn(
+                  "flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all duration-200",
+                  projectionMode === mode.id
+                    ? 'bg-zinc-800 text-zinc-100 shadow-sm shadow-black/40'
+                    : 'text-zinc-500 hover:text-zinc-355'
+                )}
+              >
+                {mode.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Onboarding fields input */}
-        <div className="relative w-full flex items-center gap-2 mt-2 bg-zinc-900/40 border border-zinc-850 rounded-xl p-1">
-          
-          <div className="relative">
-            <button
-              onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 border border-zinc-850 rounded-lg text-[10px] font-bold text-zinc-200 hover:text-white"
-            >
-              <span>{activeCountryObj ? activeCountryObj.flag : '🌎'}</span>
-              <span>{activeCountryObj ? activeCountryObj.dial : '+..'}</span>
-            </button>
+        {/* Right Side: onboarding controls & text details */}
+        <div className="flex-1 w-full max-w-[360px] flex flex-col justify-center gap-5">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-zinc-150">Enter your phone</h2>
+            <p className="text-xs text-zinc-500 mt-1 font-light">Select your country and number to secure your account</p>
+          </div>
 
-            {countryDropdownOpen && (
-              <div className="absolute bottom-full left-0 mb-1.5 w-[200px] max-h-[160px] overflow-y-auto bg-zinc-900 border border-zinc-850 rounded-xl p-1 shadow-xl z-40 scrollbar-thin">
-                <div className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest px-2 py-1 border-b border-zinc-850/50 mb-1">
-                  Dial Code Selector
-                </div>
-                {ONBOARDING_COUNTRIES.map(c => (
+          <div className="w-full space-y-3">
+            {/* Continent Dock Selector */}
+            <div className="w-full">
+              <div className="flex items-center justify-between px-1.5 py-2 bg-zinc-950/30 rounded-2xl border border-zinc-900/50">
+                {ONBOARDING_CONTINENTS.map(c => {
+                  const isActive = selectedContinent === c.id
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => handleContinentSelect(c.id)}
+                      className="flex-1 flex flex-col items-center gap-1.5 py-1.5 transition-all duration-200 select-none outline-none group"
+                    >
+                      <div 
+                        className="transition-all duration-200 transform group-hover:scale-105"
+                        style={{ 
+                          color: isActive ? highlightColor : '#52525b',
+                          filter: isActive ? `drop-shadow(0 0 5px rgba(${themeRgb}, 0.6))` : 'none'
+                        }}
+                      >
+                        {renderContinentIcon(c.id)}
+                      </div>
+                      <span 
+                        className={cn(
+                          "text-[9px] tracking-wider uppercase transition-colors duration-200",
+                          isActive ? "text-zinc-200 font-extrabold" : "text-zinc-650 font-bold"
+                        )}
+                      >
+                        {c.id === 'GLOBAL' ? 'Globe' : c.id}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Countries chips list */}
+            <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none my-1">
+              {filteredCountries.map(c => {
+                const isActive = selectedCountry === c.code
+                return (
                   <button
                     key={c.code}
-                    onClick={() => {
-                      handleCountrySelect(c.code)
-                      setCountryDropdownOpen(false)
+                    onClick={() => handleCountrySelect(c.code)}
+                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-semibold border transition-all duration-200"
+                    style={isActive ? {
+                      borderColor: highlightColor,
+                      color: '#ffffff',
+                      backgroundColor: `rgba(${themeRgb}, 0.12)`,
+                      boxShadow: `0 0 10px rgba(${themeRgb}, 0.25)`
+                    } : {
+                      borderColor: 'rgba(255,255,255,0.05)',
+                      color: '#a1a1aa',
+                      backgroundColor: 'rgba(24, 24, 27, 0.4)'
                     }}
-                    className="w-full flex items-center justify-between px-2 py-1 hover:bg-zinc-850 rounded-md text-[10px] text-zinc-300 hover:text-white"
                   >
-                    <span className="flex items-center gap-1.5">
-                      <span>{c.flag}</span>
-                      <span className="truncate max-w-[90px]">{c.name}</span>
-                    </span>
-                    <span className="text-zinc-500 font-mono">{c.dial}</span>
+                    <span>{c.flag}</span>
+                    <span>{c.name}</span>
                   </button>
-                ))}
-              </div>
-            )}
+                )
+              })}
+            </div>
           </div>
 
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-            placeholder="Phone number"
-            className="flex-1 bg-transparent border-0 outline-none focus:ring-0 text-xs font-semibold text-zinc-200 placeholder-zinc-700 px-1.5 py-1 font-mono"
-          />
+          {/* Onboarding fields input */}
+          <div className="w-full flex items-stretch gap-2.5 relative">
+            <div className="relative">
+              <button
+                onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
+                className="h-full flex items-center gap-2 px-3.5 py-3 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-bold text-zinc-200 transition-colors"
+              >
+                <span>{activeCountryObj ? activeCountryObj.flag : '🌎'}</span>
+                <span>{activeCountryObj ? activeCountryObj.dial : '+..'}</span>
+              </button>
+
+              {countryDropdownOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-[210px] max-h-[180px] overflow-y-auto bg-zinc-900 border border-zinc-850 rounded-xl p-1.5 shadow-2xl z-40 scrollbar-thin">
+                  <div className="text-[9px] font-bold text-zinc-550 uppercase tracking-widest px-2.5 py-1.5 border-b border-zinc-800/50 mb-1.5">
+                    Dial Code Selector
+                  </div>
+                  {ONBOARDING_COUNTRIES.map(c => (
+                    <button
+                      key={c.code}
+                      onClick={() => {
+                        handleCountrySelect(c.code)
+                        setCountryDropdownOpen(false)
+                      }}
+                      className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-zinc-850 rounded-lg text-xs text-zinc-300 hover:text-white transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{c.flag}</span>
+                        <span className="truncate max-w-[100px]">{c.name}</span>
+                      </span>
+                      <span className="text-zinc-500 font-mono font-medium">{c.dial}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+              placeholder="Phone number"
+              className="flex-1 bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3 text-xs font-semibold text-zinc-200 placeholder-zinc-700 outline-none focus:border-zinc-700 transition-all font-mono"
+            />
+          </div>
+
+          {/* Security indicator */}
+          <div className="flex items-center justify-center gap-1.5 text-[10px] text-zinc-500 font-light mt-1">
+            <ShieldCheck className="h-3.5 w-3.5" style={{ color: highlightColor }} />
+            <span>Secure 256-bit encrypted verification</span>
+          </div>
+
+          {/* Continue trigger */}
+          <button
+            onClick={() => alert(`Submitted: ${activeCountryObj?.dial} ${phone}`)}
+            disabled={!phone}
+            className={cn(
+              "group w-full relative inline-flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-bold transition-all duration-200",
+              phone
+                ? 'bg-zinc-100 text-black hover:bg-white shadow-lg active:scale-[0.98]'
+                : 'bg-zinc-900/50 border border-zinc-850 text-zinc-650 cursor-not-allowed'
+            )}
+            style={phone ? { backgroundColor: highlightColor, color: '#000000' } : {}}
+          >
+            <span>Continue</span>
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+          </button>
         </div>
-
-        {/* Security indicator */}
-        <div className="flex items-center justify-center gap-1 text-[9px] text-zinc-500 font-light mt-1 mb-2">
-          <ShieldCheck className="h-3 w-3" style={{ color: highlightColor }} />
-          <span>Secure 256-bit encrypted verification</span>
-        </div>
-
-        {/* Continue trigger */}
-        <button
-          onClick={() => alert(`Submitted: ${activeCountryObj?.dial} ${phone}`)}
-          disabled={!phone}
-          className={cn(
-            "group w-full relative inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-bold transition-all",
-            phone
-              ? 'bg-zinc-100 text-black hover:bg-white shadow-lg'
-              : 'bg-zinc-900 border border-zinc-850 text-zinc-600 cursor-not-allowed'
-          )}
-        >
-          <span>Continue</span>
-          <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-        </button>
-
       </div>
     </div>
   )
