@@ -1326,5 +1326,182 @@ export default function MathWaveLoader() {
 </script>`
       }
     }
+  },
+  {
+    id: 'phone-onboarding',
+    name: '3D Globe Phone Onboarding',
+    description: 'An onboarding phone country/code selector card inside a mock smartphone, featuring a dynamic 3D dot-matrix particle globe that morphs to continent maps and country silhouettes.',
+    category: 'inputs',
+    props: [
+      { id: 'glowColor', name: 'Accent Glow Hue', type: 'select', default: 'cyan', options: ['cyan', 'purple', 'emerald', 'rose'] },
+      { id: 'particleCount', name: 'Particle Mesh Count', type: 'number', default: 800, min: 400, max: 1200, step: 50 },
+      { id: 'autoRotate', name: 'Auto Rotate Globe', type: 'boolean', default: true }
+    ],
+    generateCode: (props) => {
+      const { glowColor, particleCount, autoRotate } = props;
+      
+      let themeColor = '#06b6d4';
+      let themeRgb = '6, 182, 212';
+      let themeTextGlow = 'text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]';
+      let borderGlow = 'border-cyan-500/30';
+
+      if (glowColor === 'purple') {
+        themeColor = '#a855f7';
+        themeRgb = '168, 85, 247';
+        themeTextGlow = 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]';
+        borderGlow = 'border-purple-500/30';
+      } else if (glowColor === 'emerald') {
+        themeColor = '#10b981';
+        themeRgb = '16, 185, 129';
+        themeTextGlow = 'text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]';
+        borderGlow = 'border-emerald-500/30';
+      } else if (glowColor === 'rose') {
+        themeColor = '#f43f5e';
+        themeRgb = '244, 63, 94';
+        themeTextGlow = 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.45)]';
+        borderGlow = 'border-rose-500/30';
+      }
+
+      return {
+        tailwind: `import React, { useEffect, useRef, useState } from 'react';
+import { Globe, Wifi, ShieldCheck, ArrowRight } from 'lucide-react';
+
+const COUNTRIES = [
+  { code: 'US', dial: '+1', name: 'United States', continent: 'NA', flag: '🇺🇸' },
+  { code: 'CA', dial: '+1', name: 'Canada', continent: 'NA', flag: '🇨🇦' },
+  { code: 'BR', dial: '+55', name: 'Brazil', continent: 'SA', flag: '🇧🇷' },
+  { code: 'GB', dial: '+44', name: 'United Kingdom', continent: 'EU', flag: '🇬🇧' },
+  { code: 'FR', dial: '+33', name: 'France', continent: 'EU', flag: '🇫🇷' },
+  { code: 'CN', dial: '+86', name: 'China', continent: 'AS', flag: '🇨🇳' },
+  { code: 'IN', dial: '+91', name: 'India', continent: 'AS', flag: '🇮🇳' },
+  { code: 'JP', dial: '+81', name: 'Japan', continent: 'AS', flag: '🇯🇵' },
+  { code: 'AU', dial: '+61', name: 'Australia', continent: 'AS', flag: '🇦🇺' }
+];
+
+const COUNTRY_CENTERS = {
+  US: { lon: -100, lat: 38 }, CA: { lon: -105, lat: 58 }, BR: { lon: -55, lat: -10 },
+  GB: { lon: -2, lat: 54 }, FR: { lon: 2, lat: 46 }, CN: { lon: 104, lat: 35 },
+  IN: { lon: 78, lat: 21 }, JP: { lon: 138, lat: 36 }, AU: { lon: 134, lat: -25 }
+};
+
+export default function PhoneOnboarding() {
+  const [selectedContinent, setSelectedContinent] = useState('GLOBAL');
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [phone, setPhone] = useState('');
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
+
+  const canvasRef = useRef(null);
+  const particlesRef = useRef([]);
+
+  useEffect(() => {
+    const particles = [];
+    for (let i = 0; i < ${particleCount}; i++) {
+      const c = COUNTRIES[i % COUNTRIES.length];
+      const center = COUNTRY_CENTERS[c.code];
+      particles.push({
+        x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400, z: (Math.random() - 0.5) * 400,
+        tx: 0, ty: 0, tz: 0, lon: center.lon + (Math.random() - 0.5) * 15, lat: center.lat + (Math.random() - 0.5) * 12,
+        continent: c.continent, country: c.code, idx: i
+      });
+    }
+    particlesRef.current = particles;
+  }, []);
+
+  useEffect(() => {
+    particlesRef.current.forEach(p => {
+      const R = 85;
+      const rLon = (p.lon * Math.PI) / 180;
+      const rLat = (p.lat * Math.PI) / 180;
+      if (selectedContinent === 'GLOBAL') {
+        p.tx = R * Math.cos(rLat) * Math.sin(rLon);
+        p.ty = -R * Math.sin(rLat);
+        p.tz = R * Math.cos(rLat) * Math.cos(rLon);
+      } else {
+        p.tx = p.lon * 1.5;
+        p.ty = -p.lat * 1.8;
+        p.tz = (p.continent === selectedContinent) ? 0 : -100;
+      }
+    });
+  }, [selectedContinent, selectedCountry]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animId, autoRot = 0;
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (selectedContinent === 'GLOBAL' && ${autoRotate}) autoRot += 0.004;
+      
+      const projected = particlesRef.current.map(p => {
+        p.x += (p.tx - p.x) * 0.1;
+        p.y += (p.ty - p.y) * 0.1;
+        p.z += (p.tz - p.z) * 0.1;
+        
+        let rx = p.x, ry = p.y, rz = p.z;
+        if (selectedContinent === 'GLOBAL') {
+          rx = p.x * Math.cos(autoRot) - p.z * Math.sin(autoRot);
+          rz = p.x * Math.sin(autoRot) + p.z * Math.cos(autoRot);
+        }
+        
+        const scale = 250 / (250 - rz * 0.2);
+        return { px: rx * scale + canvas.width/2, py: ry * scale + canvas.height/2, pz: rz, p };
+      });
+
+      projected.sort((a, b) => b.pz - a.pz);
+      projected.forEach(({ px, py, pz, p }) => {
+        ctx.beginPath();
+        ctx.fillStyle = (p.continent === selectedContinent || p.country === selectedCountry) ? 'rgba(${themeRgb}, 0.8)' : 'rgba(255, 255, 255, 0.2)';
+        ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(animId);
+  }, [selectedContinent, selectedCountry]);
+
+  return (
+    <div className="flex items-center justify-center p-4 bg-zinc-950/80 min-h-screen text-white">
+      <div className="relative w-[360px] h-[720px] rounded-[3.2rem] border-[10px] border-zinc-900 bg-[#0d0d0d] overflow-hidden flex flex-col p-6">
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-bold">Enter your phone</h2>
+          <p className="text-xs text-zinc-500">Select your country and number</p>
+        </div>
+
+        <canvas ref={canvasRef} width={320} height={220} className="w-full h-[220px] mb-4" />
+
+        <div className="flex gap-2 overflow-x-auto mb-4 pb-2">
+          {['GLOBAL', 'NA', 'SA', 'EU', 'AS'].map(c => (
+            <button key={c} onClick={() => setSelectedContinent(c)} className={\`px-3 py-1 rounded-full text-xs \${selectedContinent === c ? '${borderGlow} ${themeTextGlow}' : 'bg-zinc-900'}\`}>
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative flex items-center gap-2 bg-zinc-900/40 p-2 rounded-2xl mb-4">
+          <button onClick={() => setCountryDropdownOpen(!countryDropdownOpen)} className="px-3 py-2 bg-zinc-900 rounded-xl text-xs font-bold">
+            {COUNTRIES.find(c => c.code === selectedCountry)?.flag || '🌎'}
+          </button>
+          <input 
+            type="tel" 
+            value={phone} 
+            onChange={(e) => setPhone(e.target.value.replace(/\\D/g, ''))} 
+            placeholder="Phone number"
+            className="flex-1 bg-transparent outline-none text-sm font-mono"
+          />
+        </div>
+
+        <button disabled={!phone} className="w-full py-3.5 rounded-2xl text-xs font-bold bg-zinc-100 text-black disabled:bg-zinc-800 disabled:text-zinc-600">
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}`,
+        css: `.smartphone-case { width: 340px; height: 680px; border-radius: 48px; border: 10px solid #18181b; background: #0d0d0d; box-shadow: 0 0 20px ${themeColor}20; }`
+      }
+    }
   }
 ]
