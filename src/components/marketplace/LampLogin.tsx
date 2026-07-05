@@ -14,6 +14,20 @@ const LAMP_COLORS: Record<LampColor, {
   rose:  { beam:'#f9a8d4', cone:'rgba(249,168,212,0.22)', mid:'rgba(249,168,212,0.08)', glow:'rgba(249,168,212,0.68)', spot:'rgba(249,168,212,0.52)', btnGrad:'linear-gradient(135deg,#ec4899,#be185d)' },
 }
 
+// ── Color generation from any hue (0-360) ────────────────────────────────────
+const PRESET_HUES: Record<LampColor, number> = { amber:38, cool:210, rose:330 }
+
+function makeCol(h: number): (typeof LAMP_COLORS)[LampColor] {
+  return {
+    beam:    `hsl(${h},90%,64%)`,
+    cone:    `hsla(${h},90%,64%,0.22)`,
+    mid:     `hsla(${h},90%,64%,0.08)`,
+    glow:    `hsla(${h},95%,60%,0.75)`,
+    spot:    `hsla(${h},90%,64%,0.55)`,
+    btnGrad: `linear-gradient(135deg,hsl(${(h+200)%360},55%,38%),hsl(${(h+230)%360},50%,32%))`,
+  }
+}
+
 // ── Attachment points (SVG user units) for rope top ───────────────────────────
 // For pendant/lantern these are LOCAL coords inside the swinging group.
 // We rotate them by swingAngle to get absolute SVG coords.
@@ -136,6 +150,64 @@ function Bead({ cx, cy, lit, isDragging, hintId, onPointerDown }: {
       <circle cx={cx} cy={cy} r={BEAD_R * 0.46}   fill="#f5e070" opacity="0.72"/>
       <circle cx={cx - BEAD_R*0.38} cy={cy - BEAD_R*0.34} r={BEAD_R*0.22} fill="rgba(255,252,200,0.65)"/>
     </g>
+  )
+}
+
+// ── Color wheel picker ────────────────────────────────────────────────────────
+function ColorWheel({ hue, onChange }: { hue: number; onChange: (h: number) => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const SIZE = 76, CX = 38, CY = 38, R = 30
+
+  function getHue(e: { clientX: number; clientY: number }) {
+    const el = ref.current; if (!el) return 0
+    const rect = el.getBoundingClientRect()
+    const x = e.clientX - (rect.left + rect.width / 2)
+    const y = e.clientY - (rect.top + rect.height / 2)
+    return ((Math.atan2(y, x) * 180 / Math.PI) + 90 + 360) % 360
+  }
+
+  // Indicator position: hue 0° = top, clockwise
+  const mathAngle = (hue - 90) * (Math.PI / 180)
+  const ix = CX + R * Math.cos(mathAngle)
+  const iy = CY + R * Math.sin(mathAngle)
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+      <span style={{ fontSize:8.5, color:'#4a3a24', letterSpacing:'0.2em', textTransform:'uppercase', userSelect:'none' }}>
+        Light Color
+      </span>
+      <div
+        ref={ref}
+        style={{
+          position:'relative', width:SIZE, height:SIZE, borderRadius:'50%',
+          background:'conic-gradient(' + [0,30,60,90,120,150,180,210,240,270,300,330,360]
+            .map(h=>`hsl(${h},90%,64%)`).join(',') + ')',
+          cursor:'crosshair',
+          boxShadow:`0 0 0 1.5px rgba(255,255,255,0.07), 0 0 20px hsla(${hue},80%,50%,0.40)`,
+          transition:'box-shadow 0.3s',
+        }}
+        onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); onChange(getHue(e)) }}
+        onPointerMove={e => { if (e.buttons) onChange(getHue(e)) }}
+      >
+        {/* center dark hole */}
+        <div style={{
+          position:'absolute', top:'26%', left:'26%', width:'48%', height:'48%',
+          borderRadius:'50%', background:'#080610',
+          boxShadow:'inset 0 1px 4px rgba(0,0,0,0.8)',
+        }}/>
+        {/* selected hue indicator */}
+        <div style={{
+          position:'absolute',
+          left: ix - 7, top: iy - 7,
+          width:14, height:14, borderRadius:'50%',
+          background:`hsl(${hue},90%,64%)`,
+          border:'2.5px solid #fff',
+          boxShadow:`0 0 10px hsla(${hue},90%,60%,0.9), 0 1px 4px rgba(0,0,0,0.9)`,
+          pointerEvents:'none',
+          transition:'background 0.05s',
+        }}/>
+      </div>
+    </div>
   )
 }
 
@@ -357,6 +429,7 @@ export default function LampLogin({
   const [showPass,   setShowPass]   = useState(false)
   const [beadPos,    setBeadPos]    = useState<Vec2>(() => REST[lampType])
   const [isDragging, setIsDragging] = useState(false)
+  const [hue,        setHue]        = useState(() => PRESET_HUES[lampColor])
 
   const beadRef      = useRef<Vec2>(REST[lampType])
   const velRef       = useRef<Vec2>({ x:0, y:0 })
@@ -371,7 +444,7 @@ export default function LampLogin({
   const uid    = rawUid.replace(/:/g,'')
   const hintId = `ll-hint-${uid}`
 
-  const col  = LAMP_COLORS[lampColor]
+  const col  = makeCol(hue)
   const isOn = phase === 'on'
   const isFl = phase === 'flicker'
   const lit  = phase !== 'off'
@@ -386,6 +459,9 @@ export default function LampLogin({
     const r = REST[lampType]
     beadRef.current = r; setBeadPos(r)
   }, [lampType])
+
+  // Sync preset hue when lampColor prop changes from outside
+  useEffect(() => { setHue(PRESET_HUES[lampColor]) }, [lampColor])
 
   useEffect(() => () => { cancelRaf(); cancelSwingRaf() }, [])
 
@@ -584,12 +660,13 @@ export default function LampLogin({
 
         <div style={{
           flex:'0 0 55%', position:'relative', zIndex:1,
-          display:'flex', alignItems:'center', justifyContent:'center',
-          padding:'20px 0 20px 20px',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          padding:'20px 0 16px 20px', gap:14,
         }}>
           <div style={{width:'100%', maxWidth:340, aspectRatio:'340 / 480'}}>
             <LampSVG {...svgProps}/>
           </div>
+          <ColorWheel hue={hue} onChange={setHue}/>
         </div>
 
         <div style={{
