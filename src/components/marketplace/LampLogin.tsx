@@ -14,12 +14,19 @@ const LAMP_COLORS: Record<LampColor, {
   rose:  { beam:'#f9a8d4', cone:'rgba(249,168,212,0.22)', mid:'rgba(249,168,212,0.08)', glow:'rgba(249,168,212,0.68)', spot:'rgba(249,168,212,0.52)', btnGrad:'linear-gradient(135deg,#ec4899,#be185d)' },
 }
 
-// ── Bead rest + rope attachment positions (SVG user units per lamp type) ──────
+// ── Attachment points (SVG user units) for rope top ───────────────────────────
+// For pendant/lantern these are LOCAL coords inside the swinging group.
+// We rotate them by swingAngle to get absolute SVG coords.
 const ATTACH: Record<LampType, Vec2> = {
   modern:  { x:100, y:88  },
   floor:   { x:100, y:133 },
   pendant: { x:100, y:207 },
   lantern: { x:100, y:259 },
+}
+// Pivot points for pendant/lantern swing (top anchor, in SVG root coords)
+const SWING_PIVOT: Partial<Record<LampType, Vec2>> = {
+  pendant: { x:100, y:14 },
+  lantern: { x:100, y:10 },
 }
 const REST: Record<LampType, Vec2> = {
   modern:  { x:100, y:167 },
@@ -29,19 +36,33 @@ const REST: Record<LampType, Vec2> = {
 }
 const BEAD_R = 13
 
-// ── Rope path: quadratic bezier that sags naturally when pulled sideways ──────
+// Rotate a point around a pivot by angle (radians)
+function rotateAround(pt: Vec2, pivot: Vec2, angle: number): Vec2 {
+  const dx = pt.x - pivot.x, dy = pt.y - pivot.y
+  return {
+    x: pivot.x + dx * Math.cos(angle) - dy * Math.sin(angle),
+    y: pivot.y + dx * Math.sin(angle) + dy * Math.cos(angle),
+  }
+}
+
+// Compute actual rope attachment point in SVG root coords (accounts for swing)
+function computeAttach(type: LampType, angle: number): Vec2 {
+  const pivot = SWING_PIVOT[type]
+  if (!pivot || angle === 0) return ATTACH[type]
+  return rotateAround(ATTACH[type], pivot, angle)
+}
+
+// ── Rope path: quadratic bezier that sags with gravity when pulled sideways ──
 function ropePath(attach: Vec2, bx: number, by: number): string {
-  const ex = bx, ey = by - BEAD_R          // rope endpoint = top of bead
-  const dx = ex - attach.x
-  const dy = ey - attach.y
-  // sag proportional to horizontal pull (gravity effect)
+  const ex = bx, ey = by - BEAD_R
+  const dx = ex - attach.x, dy = ey - attach.y
   const sag = Math.max(0, Math.abs(dx) * 0.28 + Math.max(0, -dy) * 0.12)
   const cpX = (attach.x + ex) / 2
   const cpY = (attach.y + ey) / 2 + sag
   return `M ${attach.x} ${attach.y} Q ${cpX} ${cpY} ${ex} ${ey}`
 }
 
-// ── Keyframes ─────────────────────────────────────────────────────────────────
+// ── Keyframes (no ll-swing — that's now JS spring) ────────────────────────────
 const KF = `
 @keyframes ll-flicker {
   0%,100%{opacity:0} 10%{opacity:.85} 16%{opacity:0}
@@ -49,12 +70,6 @@ const KF = `
   56%{opacity:.45} 76%{opacity:1}
 }
 @keyframes ll-cone-pulse { 0%,100%{opacity:1} 50%{opacity:.74} }
-@keyframes ll-swing {
-  0%{transform:rotate(0deg)} 18%{transform:rotate(11deg)}
-  36%{transform:rotate(-7deg)} 54%{transform:rotate(4deg)}
-  72%{transform:rotate(-2deg)} 88%{transform:rotate(1deg)}
-  100%{transform:rotate(0deg)}
-}
 `
 
 // ── Lamp colours ──────────────────────────────────────────────────────────────
@@ -74,43 +89,51 @@ function bodyStyle(phase: Phase): React.CSSProperties {
   }
 }
 
-// ── Rope SVG (path-based so it curves naturally) ──────────────────────────────
-function Rope({ d, lit }: { d: string; lit: boolean }) {
+// ── Rope SVG — lit by lamp color when on ─────────────────────────────────────
+function Rope({ d, lit, col }: {
+  d: string; lit: boolean; col: (typeof LAMP_COLORS)[LampColor]
+}) {
   return (
-    <g style={{ pointerEvents: 'none' }}>
-      {/* shadow */}
-      <path d={d} fill="none" stroke="rgba(5,2,0,0.6)"          strokeWidth="8" strokeLinecap="round"/>
-      {/* base */}
-      <path d={d} fill="none" stroke={lit?'#7c5c30':'#4a3a20'}  strokeWidth="7" strokeLinecap="round" style={{transition:'stroke 0.7s'}}/>
-      {/* twist strand A — light */}
-      <path d={d} fill="none" stroke="rgba(195,150,88,0.82)"    strokeWidth="3.8" strokeDasharray="9,9" strokeDashoffset="0"  strokeLinecap="butt"/>
-      {/* twist strand B — dark (fills gaps of A) */}
-      <path d={d} fill="none" stroke="rgba(28,12,2,0.72)"       strokeWidth="3.8" strokeDasharray="9,9" strokeDashoffset="9"  strokeLinecap="butt"/>
-      {/* highlight */}
-      <path d={d} fill="none" stroke="rgba(255,220,150,0.22)"   strokeWidth="1.5" strokeLinecap="round"/>
+    <g style={{ pointerEvents:'none' }}>
+      {/* glow bloom from lamp illumination */}
+      <path d={d} fill="none" stroke={col.cone} strokeWidth="16" strokeLinecap="round"
+        opacity={lit?0.85:0} style={{ filter:'blur(6px)', transition:'opacity 0.7s' }}/>
+      {/* drop shadow (always) */}
+      <path d={d} fill="none" stroke="rgba(4,1,0,0.72)" strokeWidth="9.5" strokeLinecap="round"/>
+      {/* rope body — warmer/brighter when lit */}
+      <path d={d} fill="none" stroke={lit?'#9c7040':'#3a2a14'} strokeWidth="7.5"
+        strokeLinecap="round" style={{ transition:'stroke 0.7s' }}/>
+      {/* twist strand A — takes lamp color when lit */}
+      <path d={d} fill="none"
+        stroke={lit ? col.glow : 'rgba(148,112,54,0.60)'}
+        strokeWidth="4" strokeDasharray="9,9" strokeDashoffset="0"
+        strokeLinecap="butt" style={{ transition:'stroke 0.7s' }}/>
+      {/* twist strand B — shadow/dark side stays dark */}
+      <path d={d} fill="none" stroke="rgba(14,5,0,0.82)"
+        strokeWidth="4" strokeDasharray="9,9" strokeDashoffset="9" strokeLinecap="butt"/>
+      {/* rim highlight — lamp-colored when lit */}
+      <path d={d} fill="none"
+        stroke={lit ? col.glow : 'rgba(190,145,70,0.14)'}
+        strokeWidth="1.4" strokeLinecap="round"
+        opacity={lit?0.55:1} style={{ transition:'stroke 0.7s, opacity 0.7s' }}/>
     </g>
   )
 }
 
-// ── Bead SVG (absolute SVG coords, no CSS transform) ─────────────────────────
+// ── Bead SVG ──────────────────────────────────────────────────────────────────
 function Bead({ cx, cy, lit, isDragging, hintId, onPointerDown }: {
   cx:number; cy:number; lit:boolean; isDragging:boolean
   hintId:string; onPointerDown:(e:React.PointerEvent)=>void
 }) {
   return (
-    <g onPointerDown={onPointerDown} style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
-      {/* hit area */}
+    <g onPointerDown={onPointerDown} style={{ cursor: isDragging?'grabbing':'grab' }}>
       <circle cx={cx} cy={cy} r={BEAD_R + 14} fill="transparent"/>
-      {/* soft hint pulse when lamp is off */}
       {!lit && !isDragging && (
         <circle cx={cx} cy={cy} r={BEAD_R + 9} fill="#c8a84b" opacity="0.10"
           style={{ animation:`${hintId} 2.4s ease-in-out infinite` }}/>
       )}
-      {/* outer shell */}
-      <circle cx={cx} cy={cy} r={BEAD_R}         fill="#c8a84b" stroke="#deba58" strokeWidth="2.2"/>
-      {/* inner highlight disk */}
-      <circle cx={cx} cy={cy} r={BEAD_R * 0.46}  fill="#f5e070" opacity="0.72"/>
-      {/* specular */}
+      <circle cx={cx} cy={cy} r={BEAD_R}          fill="#c8a84b" stroke="#deba58" strokeWidth="2.2"/>
+      <circle cx={cx} cy={cy} r={BEAD_R * 0.46}   fill="#f5e070" opacity="0.72"/>
       <circle cx={cx - BEAD_R*0.38} cy={cy - BEAD_R*0.34} r={BEAD_R*0.22} fill="rgba(255,252,200,0.65)"/>
     </g>
   )
@@ -121,18 +144,18 @@ interface SVGProps {
   phase: Phase
   col: (typeof LAMP_COLORS)[LampColor]
   beadPos: Vec2
+  attachPos: Vec2         // actual rope-top in SVG root coords (rotated for pendant/lantern)
+  swingAngle: number      // JS-driven pendulum angle (radians) — 0 for modern/floor
   isDragging: boolean
-  swinging: boolean
   hintId: string
   svgRef: React.RefObject<SVGSVGElement | null>
   onBeadPointerDown: (e: React.PointerEvent) => void
 }
 
 // ── Modern lamp ───────────────────────────────────────────────────────────────
-function ModernLamp({ phase, col, beadPos, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
+function ModernLamp({ phase, col, beadPos, attachPos, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
   const lit = phase !== 'off', fl = phase === 'flicker'
-  const att = ATTACH.modern
-  const rd = ropePath(att, beadPos.x, beadPos.y)
+  const rd = ropePath(attachPos, beadPos.x, beadPos.y)
 
   return (
     <svg ref={svgRef} viewBox="0 0 200 400" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
@@ -141,7 +164,6 @@ function ModernLamp({ phase, col, beadPos, isDragging, hintId, svgRef, onBeadPoi
         <ellipse cx="100" cy="65" rx="72" ry="5"  fill="none"     stroke={LC.hi}      strokeWidth="1.5"/>
         <path d="M20 66 L180 66 L168 87 L32 87 Z" fill={LC.body}  stroke={LC.bodySt}  strokeWidth="1"/>
         <ellipse cx="100" cy="87" rx="68" ry="7"  fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1"/>
-        {/* glow + cone */}
         <ellipse cx="100" cy="87" rx="110" ry="60" fill={col.spot}
           opacity={fl?undefined:(lit?1:0)}
           style={{filter:'blur(18px)',transition:'opacity 0.5s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
@@ -151,7 +173,6 @@ function ModernLamp({ phase, col, beadPos, isDragging, hintId, svgRef, onBeadPoi
         <ellipse cx="100" cy="87" rx="62" ry="6" fill={col.beam}
           opacity={fl?undefined:(lit?0.7:0)}
           style={{transition:'opacity 0.4s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-        {/* pole + base */}
         <rect x="97.5" y="87" width="5" height="242" rx="2.5" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
         <rect x="98"   y="87" width="2" height="242" rx="1"   fill="rgba(180,180,220,0.05)"/>
         <rect x="38" y="329" width="124" height="13" rx="6" fill={LC.base} stroke={LC.baseSt} strokeWidth="1.5"/>
@@ -159,17 +180,16 @@ function ModernLamp({ phase, col, beadPos, isDragging, hintId, svgRef, onBeadPoi
         <ellipse cx="100" cy="342" rx="62" ry="8" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
         <ellipse cx="100" cy="337" rx="52" ry="3" fill="none"   stroke={LC.hi}      strokeWidth="1"/>
       </g>
-      <Rope d={rd} lit={lit}/>
+      <Rope d={rd} lit={lit} col={col}/>
       <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
 
 // ── Floor lamp ────────────────────────────────────────────────────────────────
-function FloorLamp({ phase, col, beadPos, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
+function FloorLamp({ phase, col, beadPos, attachPos, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
   const lit = phase !== 'off', fl = phase === 'flicker'
-  const att = ATTACH.floor
-  const rd = ropePath(att, beadPos.x, beadPos.y)
+  const rd = ropePath(attachPos, beadPos.x, beadPos.y)
 
   return (
     <svg ref={svgRef} viewBox="0 0 200 420" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
@@ -188,29 +208,34 @@ function FloorLamp({ phase, col, beadPos, isDragging, hintId, svgRef, onBeadPoin
           opacity={fl?undefined:(lit?0.65:0)}
           style={{transition:'opacity 0.4s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
         <rect x="97.5" y="132" width="5" height="218" rx="2.5" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
-        <rect x="38" y="350" width="124" height="13" rx="6"    fill={LC.base} stroke={LC.baseSt} strokeWidth="1.5"/>
+        <rect x="38" y="350" width="124" height="13" rx="6" fill={LC.base} stroke={LC.baseSt} strokeWidth="1.5"/>
         <ellipse cx="100" cy="350" rx="62" ry="9" fill={LC.base} stroke={LC.baseSt} strokeWidth="1"/>
         <ellipse cx="100" cy="363" rx="62" ry="8" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
       </g>
-      <Rope d={rd} lit={lit}/>
+      <Rope d={rd} lit={lit} col={col}/>
       <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
 
 // ── Pendant lamp ──────────────────────────────────────────────────────────────
-function PendantLamp({ phase, col, beadPos, isDragging, swinging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
+function PendantLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
   const lit = phase !== 'off', fl = phase === 'flicker'
-  const att = ATTACH.pendant
-  const rd = ropePath(att, beadPos.x, beadPos.y)
+  const rd = ropePath(attachPos, beadPos.x, beadPos.y)
+  const swingDeg = swingAngle * (180 / Math.PI)
 
   return (
     <svg ref={svgRef} viewBox="0 0 200 380" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
+      {/* Rope + bead drawn FIRST (behind lamp) so lamp body overlaps it at top */}
+      <Rope d={rd} lit={lit} col={col}/>
+      <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
       <g style={bodyStyle(phase)}>
+        {/* ceiling fixture — fixed, doesn't swing */}
         <ellipse cx="100" cy="14" rx="32" ry="8"  fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
         <rect    x="68"  y="6"   width="64" height="14" rx="5" fill={LC.body} stroke={LC.bodySt} strokeWidth="1"/>
         <ellipse cx="100" cy="11" rx="26" ry="3"  fill="none"    stroke={LC.hi}      strokeWidth="1"/>
-        <g style={{transformOrigin:'100px 14px', animation:swinging?'ll-swing 1.1s ease-out forwards':'none'}}>
+        {/* swinging body — JS-controlled angle */}
+        <g style={{ transformOrigin:'100px 14px', transform:`rotate(${swingDeg}deg)` }}>
           <line x1="100" y1="14" x2="100" y2="120" stroke="#2a2a38" strokeWidth="5" strokeLinecap="round"/>
           <line x1="100" y1="14" x2="100" y2="120" stroke="#484858" strokeWidth="2.5" strokeLinecap="round"/>
           <rect x="88" y="116" width="24" height="18" rx="4" fill={LC.body} stroke={LC.bodySt} strokeWidth="1.5"/>
@@ -240,24 +265,26 @@ function PendantLamp({ phase, col, beadPos, isDragging, swinging, hintId, svgRef
           <ellipse cx="100" cy="206" rx="18" ry="5" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
         </g>
       </g>
-      <Rope d={rd} lit={lit}/>
-      <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
 
 // ── Lantern lamp ──────────────────────────────────────────────────────────────
-function LanternLamp({ phase, col, beadPos, isDragging, swinging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
+function LanternLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
   const lit = phase !== 'off', fl = phase === 'flicker'
-  const att = ATTACH.lantern
-  const rd = ropePath(att, beadPos.x, beadPos.y)
+  const rd = ropePath(attachPos, beadPos.x, beadPos.y)
+  const swingDeg = swingAngle * (180 / Math.PI)
   const links = [0,14,28,42,56]
 
   return (
     <svg ref={svgRef} viewBox="0 0 200 400" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
+      <Rope d={rd} lit={lit} col={col}/>
+      <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
       <g style={bodyStyle(phase)}>
+        {/* ceiling bracket — fixed */}
         <rect x="84" y="4" width="32" height="12" rx="5" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
-        <g style={{transformOrigin:'100px 10px', animation:swinging?'ll-swing 1.1s ease-out forwards':'none'}}>
+        {/* swinging chain + body */}
+        <g style={{ transformOrigin:'100px 10px', transform:`rotate(${swingDeg}deg)` }}>
           {links.map(y=>(
             <ellipse key={y} cx="100" cy={16+y} rx="5" ry="8" fill="none" stroke={LC.shadeSt} strokeWidth="2"/>
           ))}
@@ -285,8 +312,6 @@ function LanternLamp({ phase, col, beadPos, isDragging, swinging, hintId, svgRef
           <path d="M94 234 L100 258 L106 234 Z" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
         </g>
       </g>
-      <Rope d={rd} lit={lit}/>
-      <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
@@ -324,62 +349,89 @@ export default function LampLogin({
   showGoogle  = true,
   compact     = false,
 }: LampLoginProps) {
-  const [phase,     setPhase]     = useState<Phase>('off')
-  const [toggling,  setToggling]  = useState(false)
-  const [swinging,  setSwinging]  = useState(false)
-  const [showPass,  setShowPass]  = useState(false)
-  const [beadPos,   setBeadPos]   = useState<Vec2>(() => REST[lampType])
-  const [isDragging,setIsDragging]= useState(false)
+  const [phase,      setPhase]      = useState<Phase>('off')
+  const [toggling,   setToggling]   = useState(false)
+  const [swingAngle, setSwingAngle] = useState(0)
+  const [showPass,   setShowPass]   = useState(false)
+  const [beadPos,    setBeadPos]    = useState<Vec2>(() => REST[lampType])
+  const [isDragging, setIsDragging] = useState(false)
 
-  const beadRef   = useRef<Vec2>(REST[lampType])   // always-current pos for closures
-  const velRef    = useRef<Vec2>({ x:0, y:0 })
-  const rafRef    = useRef<number | null>(null)
-  const svgRef    = useRef<SVGSVGElement | null>(null)
+  const beadRef      = useRef<Vec2>(REST[lampType])
+  const velRef       = useRef<Vec2>({ x:0, y:0 })
+  const rafRef       = useRef<number | null>(null)
+  const swingAngleRef = useRef(0)
+  const swingVelRef  = useRef(0)
+  const swingRafRef  = useRef<number | null>(null)
+  const attachRef    = useRef<Vec2>(ATTACH[lampType])
+  const svgRef       = useRef<SVGSVGElement | null>(null)
 
-  // unique animation name so multiple instances don't clash
   const rawUid = useId()
   const uid    = rawUid.replace(/:/g,'')
   const hintId = `ll-hint-${uid}`
 
-  const col    = LAMP_COLORS[lampColor]
-  const isOn   = phase === 'on'
-  const isFl   = phase === 'flicker'
-  const lit    = phase !== 'off'
+  const col  = LAMP_COLORS[lampColor]
+  const isOn = phase === 'on'
+  const isFl = phase === 'flicker'
+  const lit  = phase !== 'off'
 
-  // reset bead when lamp type changes
+  // Keep attachRef in sync each render so drag closures see the latest attach
+  const attachPos = computeAttach(lampType, swingAngle)
+  attachRef.current = attachPos
+
   useEffect(() => {
-    cancelRaf()
+    cancelRaf(); cancelSwingRaf()
+    swingAngleRef.current = 0; swingVelRef.current = 0; setSwingAngle(0)
     const r = REST[lampType]
-    beadRef.current = r
-    setBeadPos(r)
+    beadRef.current = r; setBeadPos(r)
   }, [lampType])
 
-  useEffect(() => () => { cancelRaf() }, [])
+  useEffect(() => () => { cancelRaf(); cancelSwingRaf() }, [])
 
   function cancelRaf() {
     if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null }
   }
+  function cancelSwingRaf() {
+    if (swingRafRef.current !== null) { cancelAnimationFrame(swingRafRef.current); swingRafRef.current = null }
+  }
 
   function moveBead(v: Vec2) { beadRef.current = v; setBeadPos(v) }
 
-  // Convert DOM clientX/Y → SVG user units using the SVG's own transform matrix
   function toSVG(cx: number, cy: number): Vec2 | null {
     const svg = svgRef.current
     if (!svg) return null
-    const pt  = svg.createSVGPoint()
-    const ctm = svg.getScreenCTM()
+    const pt = svg.createSVGPoint(), ctm = svg.getScreenCTM()
     if (!ctm) return null
     pt.x = cx; pt.y = cy
     const r = pt.matrixTransform(ctm.inverse())
     return { x: r.x, y: r.y }
   }
 
+  // JS spring animation for pendant/lantern swing
+  function startSwingAnimation() {
+    cancelSwingRaf()
+    swingAngleRef.current = 0.19   // ~11° initial displacement
+    swingVelRef.current   = 0
+    let last = performance.now()
+    function tick(now: number) {
+      const dt = Math.min((now - last) / 1000, 0.033)
+      last = now
+      const a = swingAngleRef.current, v = swingVelRef.current
+      // pendulum spring: k=12 (period ≈ 1.8s), damping=4
+      const nv = v + (-12 * a - 4 * v) * dt
+      const na = a + nv * dt
+      swingAngleRef.current = na; swingVelRef.current = nv
+      setSwingAngle(na)
+      if (Math.abs(na) > 0.001 || Math.abs(nv) > 0.005)
+        swingRafRef.current = requestAnimationFrame(tick)
+      else { swingAngleRef.current = 0; setSwingAngle(0) }
+    }
+    swingRafRef.current = requestAnimationFrame(tick)
+  }
+
   function triggerToggle() {
     if (toggling) return
     setToggling(true)
-    if (lampType === 'pendant' || lampType === 'lantern') {
-      setSwinging(true); setTimeout(() => setSwinging(false), 1200)
-    }
+    if (lampType === 'pendant' || lampType === 'lantern') startSwingAnimation()
     setTimeout(() => {
       setToggling(false)
       if (phase === 'on') setPhase('off')
@@ -387,7 +439,6 @@ export default function LampLogin({
     }, 220)
   }
 
-  // Spring physics back to rest position
   function springBack(shouldToggle: boolean) {
     if (shouldToggle) triggerToggle()
     cancelRaf()
@@ -396,15 +447,13 @@ export default function LampLogin({
     const vel  = velRef.current
     vel.x = 0; vel.y = 0
     let last = performance.now()
-
     function tick(now: number) {
       const dt = Math.min((now - last) / 1000, 0.033)
       last = now
       const dx = pos.x - rest.x, dy = pos.y - rest.y
       vel.x += (-320 * dx - 24 * vel.x) * dt
       vel.y += (-320 * dy - 24 * vel.y) * dt
-      pos.x += vel.x * dt
-      pos.y += vel.y * dt
+      pos.x += vel.x * dt; pos.y += vel.y * dt
       moveBead({ x: pos.x, y: pos.y })
       if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3 || Math.abs(vel.x) > 0.3 || Math.abs(vel.y) > 0.3)
         rafRef.current = requestAnimationFrame(tick)
@@ -417,13 +466,11 @@ export default function LampLogin({
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
     cancelRaf()
-
     const startSvg = toSVG(e.clientX, e.clientY)
     if (!startSvg) return
-    const startBead = { ...beadRef.current }
-    const att = ATTACH[lampType]
+    const startBead   = { ...beadRef.current }
+    const startAttach = { ...attachRef.current }  // capture rotated attach at drag start
     const MAX_DIST = 155
-
     setIsDragging(true)
 
     const onMove = (me: PointerEvent) => {
@@ -431,24 +478,20 @@ export default function LampLogin({
       if (!cur) return
       let nx = startBead.x + (cur.x - startSvg.x)
       let ny = startBead.y + (cur.y - startSvg.y)
-      // clamp to max rope length from attachment
-      const dx = nx - att.x, dy = ny - att.y
+      const dx = nx - startAttach.x, dy = ny - startAttach.y
       const dist = Math.hypot(dx, dy)
-      if (dist > MAX_DIST) { nx = att.x + dx/dist*MAX_DIST; ny = att.y + dy/dist*MAX_DIST }
+      if (dist > MAX_DIST) { nx = startAttach.x + dx/dist*MAX_DIST; ny = startAttach.y + dy/dist*MAX_DIST }
       moveBead({ x: nx, y: ny })
     }
-
     const onUp = () => {
       setIsDragging(false)
       const rest = REST[lampType]
       const cur  = beadRef.current
-      const dist = Math.hypot(cur.x - rest.x, cur.y - rest.y)
-      // toggle: pulled far enough OR barely moved (pure click)
-      springBack(dist > 22 || dist < 4)
+      springBack(Math.hypot(cur.x - rest.x, cur.y - rest.y) > 22 ||
+                 Math.hypot(cur.x - rest.x, cur.y - rest.y) < 4)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup',   onUp)
     }
-
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup',   onUp)
   }
@@ -459,11 +502,11 @@ export default function LampLogin({
     : ModernLamp
 
   const svgProps: SVGProps = {
-    phase, col, beadPos, isDragging, swinging,
+    phase, col, beadPos, attachPos, swingAngle, isDragging,
     hintId, svgRef, onBeadPointerDown: handleBeadPointerDown,
   }
 
-  // ── Compact (grid thumbnail) ─────────────────────────────────────────────
+  // ── Compact ───────────────────────────────────────────────────────────────
   if (compact) {
     const src = LIGHT_SRC[lampType]
     return (
@@ -518,15 +561,12 @@ export default function LampLogin({
         display:'flex', boxSizing:'border-box',
         fontFamily:'system-ui,-apple-system,sans-serif',
       }}>
-
-        {/* hint */}
         <p style={{
           position:'absolute', top:22, left:30, margin:0,
           fontSize:8.5, color:'#3a2e1a', letterSpacing:'0.22em',
           textTransform:'uppercase', userSelect:'none', zIndex:3,
         }}>Pull the string to toggle login</p>
 
-        {/* scene light overlay */}
         <div style={{
           position:'absolute', inset:0,
           background:[
@@ -540,7 +580,6 @@ export default function LampLogin({
           pointerEvents:'none', zIndex:0,
         }}/>
 
-        {/* Left: lamp */}
         <div style={{
           flex:'0 0 55%', position:'relative', zIndex:1,
           display:'flex', alignItems:'center', justifyContent:'center',
@@ -551,7 +590,6 @@ export default function LampLogin({
           </div>
         </div>
 
-        {/* Right: form */}
         <div style={{
           flex:'1 1 auto', display:'flex', alignItems:'center', justifyContent:'center',
           padding:'24px 32px 24px 12px', zIndex:1,
