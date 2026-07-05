@@ -1839,9 +1839,10 @@ export default function GlobeView({
   {
     id: 'lamp-login',
     name: 'Lamp Toggle Login',
-    description: 'A cinematic login screen with a pull-string desk lamp. Clicking the hanging bead toggles the lamp — only when it\'s lit does the warm light cone reveal the login form.',
+    description: 'A cinematic login screen with a pull-string lamp. Pull the hanging bead to toggle it — the lamp flickers on, casting a light cone that reveals the login form. Four distinct lamp styles available.',
     category: 'inputs',
     props: [
+      { id: 'lampType', name: 'Lamp Style', type: 'select', default: 'modern', options: ['modern', 'floor', 'pendant', 'lantern'] },
       { id: 'lampColor', name: 'Light Color', type: 'select', default: 'amber', options: ['amber', 'cool', 'rose'] },
       { id: 'title', name: 'Form Title', type: 'text', default: 'Welcome Back' },
       { id: 'buttonLabel', name: 'Button Label', type: 'text', default: 'Sign In' },

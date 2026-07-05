@@ -1213,6 +1213,7 @@ function LivePreviewRenderer({ item, props, selectedSubLoader, onSelectSubLoader
   if (item.id === 'lamp-login') {
     return (
       <LampLogin
+        lampType={props.lampType ?? 'modern'}
         lampColor={props.lampColor ?? 'amber'}
         title={props.title ?? 'Welcome Back'}
         buttonLabel={props.buttonLabel ?? 'Sign In'}
