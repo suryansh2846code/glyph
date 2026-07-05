@@ -3,6 +3,7 @@ import { COMPONENT_REGISTRY } from './ComponentRegistry'
 import type { ComponentItem } from './ComponentRegistry'
 import GlobeView from '../GlobeView'
 import LampLogin from './LampLogin'
+import OtpVerify from './OtpVerify'
 import {
   Search,
   Check,
@@ -1208,6 +1209,19 @@ function LivePreviewRenderer({ item, props, selectedSubLoader, onSelectSubLoader
         onSubmit={(val) => alert(`Submitted: ${val.e164}`)}
       />
     );
+  }
+
+  if (item.id === 'otp-verify') {
+    return (
+      <OtpVerify
+        length={(Number(props.codeLength ?? 4)) as 4 | 6}
+        accentColor={props.accentColor ?? '#22c55e'}
+        verifyMode={props.verifyMode ?? 'auto'}
+        title={props.title ?? "We've sent a code to your phone."}
+        subtitle={props.subtitle ?? "It'll auto-verify once entered."}
+        compact={!!props.isCompact}
+      />
+    )
   }
 
   if (item.id === 'lamp-login') {

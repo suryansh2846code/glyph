@@ -1837,6 +1837,264 @@ export default function GlobeView({
     }
   },
   {
+    id: 'otp-verify',
+    name: 'OTP Verification',
+    description: 'A polished OTP input with glowing rounded digit boxes that converge and collapse into a single success box with an animated checkmark when verification completes.',
+    category: 'inputs',
+    props: [
+      { id: 'codeLength', name: 'Code Length', type: 'select', default: '4', options: ['4', '6'] },
+      { id: 'accentColor', name: 'Accent Color', type: 'color', default: '#22c55e' },
+      { id: 'verifyMode', name: 'Verify Mode', type: 'select', default: 'auto', options: ['auto', 'button'] },
+      { id: 'title', name: 'Title Text', type: 'text', default: "We've sent a code to your phone." },
+      { id: 'subtitle', name: 'Subtitle Text', type: 'text', default: "It'll auto-verify once entered." },
+    ],
+    generateCode: (props) => {
+      const len = Number(props.codeLength ?? 4)
+      const accent = props.accentColor ?? '#22c55e'
+      const mode = props.verifyMode ?? 'auto'
+      const title = props.title ?? "We've sent a code to your phone."
+      const subtitle = props.subtitle ?? "It'll auto-verify once entered."
+
+      return {
+        tailwind: `import React, { useEffect, useRef, useState } from 'react';
+
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '');
+  const f = h.length === 3 ? h.split('').map(c => c+c).join('') : h;
+  const r=parseInt(f.slice(0,2),16), g=parseInt(f.slice(2,4),16), b=parseInt(f.slice(4,6),16);
+  return \`rgba(\${r},\${g},\${b},\${alpha})\`;
+}
+
+const ACCENT = '${accent}';
+const LENGTH = ${len};
+
+export default function OtpVerify() {
+  const [digits, setDigits] = useState(Array(LENGTH).fill(''));
+  const [phase, setPhase] = useState('input'); // input | verifying | success | error
+  const refs = useRef([]);
+  const allFilled = digits.every(d => d !== '');
+
+  useEffect(() => {
+    if ('${mode}' !== 'auto' || !allFilled || phase !== 'input') return;
+    const t = setTimeout(verify, 280);
+    return () => clearTimeout(t);
+  }, [allFilled, phase]);
+
+  function verify() {
+    setPhase('verifying');
+    setTimeout(() => setPhase('success'), 480);
+  }
+
+  function handleChange(i, raw) {
+    if (phase !== 'input') return;
+    const ch = raw.replace(/\\D/g, '').slice(-1);
+    const next = [...digits]; next[i] = ch; setDigits(next);
+    if (ch && i < LENGTH - 1) refs.current[i+1]?.focus();
+  }
+
+  function handleKeyDown(i, e) {
+    if (e.key === 'Backspace') {
+      if (digits[i]) { const n=[...digits]; n[i]=''; setDigits(n); }
+      else if (i > 0) { refs.current[i-1]?.focus(); const n=[...digits]; n[i-1]=''; setDigits(n); }
+    }
+    if (e.key === 'ArrowLeft' && i > 0) refs.current[i-1]?.focus();
+    if (e.key === 'ArrowRight' && i < LENGTH-1) refs.current[i+1]?.focus();
+  }
+
+  function handlePaste(e) {
+    e.preventDefault();
+    const p = e.clipboardData.getData('text').replace(/\\D/g,'').slice(0,LENGTH);
+    if (!p) return;
+    setDigits(Array(LENGTH).fill('').map((_,i) => p[i] ?? ''));
+    refs.current[Math.min(p.length,LENGTH)-1]?.focus();
+  }
+
+  const BOX = 64, GAP = 14;
+  const total = LENGTH * BOX + (LENGTH-1) * GAP;
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:28, fontFamily:'system-ui' }}>
+      <div style={{ textAlign:'center' }}>
+        <p style={{ color:'#e4e4e7', fontSize:14, fontWeight:500, margin:'0 0 6px' }}>${title}</p>
+        <p style={{ color:'#71717a', fontSize:12, margin:0 }}>${subtitle}</p>
+      </div>
+
+      <div style={{ position:'relative', width:total, height:BOX }}>
+        {phase === 'success' ? (
+          <div style={{ position:'absolute', left:'50%', width:BOX, height:BOX, borderRadius:20,
+            border:\`2.5px solid \${ACCENT}\`, boxShadow:\`0 0 24px \${hexToRgba(ACCENT,.55)}\`,
+            backgroundColor:hexToRgba(ACCENT,.09), display:'flex', alignItems:'center',
+            justifyContent:'center', animation:'otpPop .44s cubic-bezier(.34,1.56,.64,1) both' }}>
+            <svg width={BOX*.4} height={BOX*.4} viewBox="0 0 24 24" fill="none">
+              <path d="M5 13l4 4L19 7" stroke={ACCENT} strokeWidth="2.5" strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ strokeDasharray:30, strokeDashoffset:30, animation:'otpCheck .36s ease-out .3s forwards' }} />
+            </svg>
+          </div>
+        ) : digits.map((digit, i) => {
+          const left = i*(BOX+GAP), dx = (total/2)-(left+BOX/2);
+          const isNext = !digit && digits.slice(0,i).every(d => d !== '');
+          const bc = (digit||isNext) ? ACCENT : '#3f3f46';
+          return (
+            <div key={i} style={{
+              position:'absolute', left, width:BOX, height:BOX, borderRadius:20,
+              border:\`2px solid \${bc}\`,
+              backgroundColor: digit ? hexToRgba(ACCENT,.07) : 'transparent',
+              boxShadow: (digit||isNext) ? \`0 0 16px \${hexToRgba(ACCENT,.24)}\` : 'none',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              transform: phase==='verifying' ? \`translateX(\${dx}px) scale(0.72)\` : 'translateX(0) scale(1)',
+              opacity: phase==='verifying' ? 0 : 1,
+              transition:'transform 420ms cubic-bezier(.4,0,.2,1), opacity 400ms ease, border-color 180ms, box-shadow 180ms',
+            }}>
+              <input ref={el => refs.current[i]=el} type="text" inputMode="numeric" maxLength={1}
+                value={digit} onChange={e => handleChange(i,e.target.value)}
+                onKeyDown={e => handleKeyDown(i,e)} onPaste={i===0 ? handlePaste : undefined}
+                disabled={phase!=='input'} autoComplete={i===0 ? 'one-time-code' : 'off'}
+                style={{ width:'100%', height:'100%', background:'transparent', border:'none',
+                  outline:'none', textAlign:'center', fontSize:26, fontWeight:700, color:'#f4f4f5',
+                  caretColor:'transparent', cursor:'text', borderRadius:20 }} />
+            </div>
+          );
+        })}
+      </div>
+
+      ${mode === 'button' ? `{phase === 'input' && allFilled && (
+        <button onClick={verify} style={{ padding:'10px 36px', borderRadius:12, border:'none',
+          fontSize:13, fontWeight:700, cursor:'pointer', backgroundColor:ACCENT, color:'#000',
+          boxShadow:\`0 0 22px \${hexToRgba(ACCENT,.42)}\` }}>
+          Verify Code
+        </button>
+      )}` : ''}
+
+      <p style={{ color:phase==='success' ? ACCENT : '#52525b', fontSize:12, margin:0 }}>
+        {phase === 'success' ? 'Verified successfully' : (
+          <>Didn't receive? <button onClick={() => { setDigits(Array(LENGTH).fill('')); setPhase('input'); }}
+            style={{ color:'#a1a1aa', fontWeight:700, background:'none', border:'none', cursor:'pointer', padding:0, fontSize:12 }}>
+            Resend
+          </button></>
+        )}
+      </p>
+
+      <style>{\`
+        @keyframes otpPop {
+          from { transform:translateX(-50%) scale(.5); opacity:0; }
+          to   { transform:translateX(-50%) scale(1);  opacity:1; }
+        }
+        @keyframes otpCheck { to { stroke-dashoffset:0; } }
+      \`}</style>
+    </div>
+  );
+}`,
+        css: `<!-- OTP Verification — HTML + CSS + Vanilla JS -->
+<div class="otp-root" id="otpRoot">
+  <div class="otp-header">
+    <p class="otp-title">${title}</p>
+    <p class="otp-sub">${subtitle}</p>
+  </div>
+  <div class="otp-row" id="otpRow"></div>
+  <p class="otp-status" id="otpStatus">
+    Didn't receive? <button class="otp-resend" onclick="otpReset()">Resend</button>
+  </p>
+</div>
+
+<style>
+.otp-root { display:flex; flex-direction:column; align-items:center; gap:24px; font-family:system-ui,-apple-system,sans-serif; }
+.otp-header { text-align:center; }
+.otp-title { color:#e4e4e7; font-size:14px; font-weight:500; margin:0 0 6px; line-height:1.5; }
+.otp-sub   { color:#71717a; font-size:12px; margin:0; }
+.otp-row   { display:flex; gap:14px; }
+.otp-box   { width:64px; height:64px; border-radius:20px; border:2px solid #3f3f46;
+             background:transparent; display:flex; align-items:center; justify-content:center;
+             transition:transform 420ms cubic-bezier(.4,0,.2,1),opacity 400ms ease,border-color 180ms,box-shadow 180ms; }
+.otp-box input { width:100%; height:100%; background:transparent; border:none; outline:none;
+                 text-align:center; font-size:26px; font-weight:700; color:#f4f4f5;
+                 caret-color:transparent; cursor:text; border-radius:20px; font-family:inherit; }
+.otp-status { color:#52525b; font-size:12px; margin:0; }
+.otp-resend { color:#a1a1aa; font-weight:700; background:none; border:none; cursor:pointer;
+              padding:0; font-size:12px; font-family:inherit; }
+@keyframes otpPop { from{transform:scale(.5);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes otpCheck { to{stroke-dashoffset:0} }
+</style>
+
+<script>
+(function() {
+  const LEN=${len}, ACCENT='${accent}';
+  const digits=Array(LEN).fill('');
+  const row=document.getElementById('otpRow');
+  const status=document.getElementById('otpStatus');
+  let phase='input';
+
+  function rgba(hex,a){const h=hex.replace('#','');const f=h.length===3?h.split('').map(c=>c+c).join(''):h;return'rgba('+parseInt(f.slice(0,2),16)+','+parseInt(f.slice(2,4),16)+','+parseInt(f.slice(4,6),16)+','+a+')';}
+
+  function buildBoxes() {
+    row.innerHTML='';
+    for(let i=0;i<LEN;i++){
+      const box=document.createElement('div');box.className='otp-box';box.id='b'+i;
+      const inp=document.createElement('input');inp.type='text';inp.inputMode='numeric';inp.maxLength=1;
+      const ii=i;
+      inp.addEventListener('input',e=>{onInput(ii,e.target.value);e.target.value='';});
+      inp.addEventListener('keydown',e=>onKey(ii,e));
+      if(i===0)inp.addEventListener('paste',onPaste);
+      box.appendChild(inp);row.appendChild(box);
+    }
+  }
+  buildBoxes();
+
+  function inp(i){return row.children[i]?.querySelector('input');}
+  function box(i){return document.getElementById('b'+i);}
+
+  function updateBoxes(){
+    const ne=digits.findIndex(d=>!d);
+    for(let i=0;i<LEN;i++){
+      const b=box(i),active=digits[i]||(i===ne);
+      b.style.borderColor=active?ACCENT:'#3f3f46';
+      b.style.boxShadow=active?'0 0 16px '+rgba(ACCENT,.24):'none';
+      b.style.backgroundColor=digits[i]?rgba(ACCENT,.07):'transparent';
+      inp(i).value=digits[i];
+    }
+  }
+
+  function onInput(i,raw){
+    if(phase!=='input')return;
+    const ch=raw.replace(/\\D/g,'').slice(-1);
+    digits[i]=ch;updateBoxes();
+    if(ch&&i<LEN-1)inp(i+1)?.focus();
+    if(digits.every(d=>d!==''))setTimeout(verify,280);
+  }
+  function onKey(i,e){
+    if(e.key==='Backspace'){if(digits[i]){digits[i]='';updateBoxes();}else if(i>0){inp(i-1)?.focus();digits[i-1]='';updateBoxes();}}
+    if(e.key==='ArrowLeft'&&i>0)inp(i-1)?.focus();
+    if(e.key==='ArrowRight'&&i<LEN-1)inp(i+1)?.focus();
+  }
+  function onPaste(e){
+    e.preventDefault();const p=e.clipboardData.getData('text').replace(/\\D/g,'').slice(0,LEN);
+    if(!p)return;p.split('').forEach((c,i)=>digits[i]=c);updateBoxes();
+    inp(Math.min(p.length,LEN)-1)?.focus();
+    if(digits.every(d=>d!==''))setTimeout(verify,280);
+  }
+
+  function verify(){
+    phase='verifying';
+    const total=LEN*64+(LEN-1)*14,cx=total/2;
+    for(let i=0;i<LEN;i++){const b=box(i),left=i*(64+14),dx=cx-(left+32);b.style.transform='translateX('+dx+'px) scale(0.72)';b.style.opacity='0';}
+    setTimeout(()=>{
+      row.innerHTML='';
+      const sb=document.createElement('div');
+      sb.style.cssText='width:64px;height:64px;border-radius:20px;border:2.5px solid '+ACCENT+';box-shadow:0 0 24px '+rgba(ACCENT,.55)+';background:'+rgba(ACCENT,.09)+';display:flex;align-items:center;justify-content:center;animation:otpPop .44s cubic-bezier(.34,1.56,.64,1) both;';
+      sb.innerHTML='<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="'+ACCENT+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="stroke-dasharray:30;stroke-dashoffset:30;animation:otpCheck .36s ease-out .3s forwards"/></svg>';
+      row.appendChild(sb);
+      status.innerHTML='<span style="color:'+ACCENT+';font-weight:600">Verified successfully</span>';
+      phase='success';
+    },480);
+  }
+
+  window.otpReset=function(){digits.fill('');phase='input';buildBoxes();updateBoxes();status.innerHTML='Didn\'t receive? <button class="otp-resend" onclick="otpReset()">Resend</button>';inp(0)?.focus();};
+})();
+</script>`
+      }
+    }
+  },
+  {
     id: 'lamp-login',
     name: 'Lamp Toggle Login',
     description: 'A cinematic login screen with a pull-string lamp. Pull the hanging bead to toggle it — the lamp flickers on, casting a light cone that reveals the login form. Four distinct lamp styles available.',
