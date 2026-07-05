@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type LampType = 'modern' | 'floor' | 'pendant' | 'lantern'
@@ -28,12 +28,12 @@ const KF = `
   72%{ transform:rotate(-2deg) } 88%{ transform:rotate(1deg) }
   100%{ transform:rotate(0deg) }
 }
-@keyframes ll-bead-hint {
-  0%,100%{ transform:translateY(0px) } 50%{ transform:translateY(7px) }
+@keyframes ll-hint-glow {
+  0%,100%{ opacity:.12 } 50%{ opacity:.38 }
 }
 `
 
-// ── Light source % positions — lamp lives in left 55% → center at ~27.5% x ──
+// ── Light source % positions — lamp in left 55%, center ~27% ─────────────────
 const LIGHT_PCT: Record<LampType, { x: string; y: string }> = {
   modern:  { x: '27%', y: '22%' },
   floor:   { x: '27%', y: '31%' },
@@ -41,63 +41,124 @@ const LIGHT_PCT: Record<LampType, { x: string; y: string }> = {
   lantern: { x: '27%', y: '38%' },
 }
 
-// Compact mode pixel positions (flex layout, lampColW≈110px, padLeft≈8px → center≈63px)
+// Compact mode pixel positions
 const LIGHT_SRC: Record<LampType, { x: number; y: number }> = {
-  modern:  { x: 63, y: 50 },
-  floor:   { x: 63, y: 72 },
-  pendant: { x: 63, y: 96 },
-  lantern: { x: 63, y: 88 },
+  modern:  { x: 55, y: 46 },
+  floor:   { x: 55, y: 65 },
+  pendant: { x: 55, y: 88 },
+  lantern: { x: 55, y: 80 },
 }
 
 // ── SVG props ─────────────────────────────────────────────────────────────────
 interface SVGProps {
   phase: Phase
   col: (typeof LAMP_COLORS)[LampColor]
-  /** CSS-pixel offset to translate the bead/string group (drag + click animation) */
-  dragOffset: number
+  dragOffset: number     // CSS pixels — applied as CSS translateY on bead group
+  dragOffsetSVG: number  // SVG user-units — used to stretch rope bottom
   isDragging: boolean
   swinging: boolean
+  ropeSuffix: string     // unique suffix for clipPath IDs
   onBeadPointerDown: (e: React.PointerEvent) => void
 }
 
 // ── Lamp colours ──────────────────────────────────────────────────────────────
 const LC = {
-  shade:   '#333344',
-  shadeSt: '#525266',
-  body:    '#28283a',
-  bodySt:  '#424256',
-  pole:    '#20202e',
-  poleSt:  '#363648',
-  base:    '#2c2c3e',
-  baseSt:  '#464658',
+  shade:   '#333344', shadeSt: '#525266',
+  body:    '#28283a', bodySt:  '#424256',
+  pole:    '#20202e', poleSt:  '#363648',
+  base:    '#2c2c3e', baseSt:  '#464658',
   hi:      'rgba(180,180,220,0.20)',
 }
 
-// body group: visible (dim) when off, bright when on
 function bodyStyle(phase: Phase): React.CSSProperties {
-  const lit = phase !== 'off'
-  const flicker = phase === 'flicker'
+  const lit = phase !== 'off', flicker = phase === 'flicker'
   return {
-    opacity: flicker ? undefined : (lit ? 1 : 0.52),
+    opacity: flicker ? undefined : (lit ? 1 : 0.50),
     transition: flicker ? 'none' : 'opacity 0.9s ease',
     animation: flicker ? 'll-flicker 0.65s ease-out forwards' : 'none',
   }
 }
 
-// bead/string group style — no transition while dragging, spring-back on release
-function beadStyle(dragOffset: number, isDragging: boolean, originY: string): React.CSSProperties {
-  return {
-    transform: `translateY(${dragOffset}px)`,
-    transition: isDragging ? 'none' : 'transform 0.42s cubic-bezier(.34,1.56,.64,1)',
-    cursor: isDragging ? 'grabbing' : 'grab',
-    transformOrigin: `100px ${originY}`,
-  }
+// ── Rope SVG helper ───────────────────────────────────────────────────────────
+// Draws a textured rope rect from topY to bottomY, stretching as bead is pulled.
+// The rope color changes with lamp state and a diagonal-dash pattern fakes twist.
+function Rope({ x, topY, bottomY, lit, clipId }: {
+  x: number; topY: number; bottomY: number; lit: boolean; clipId: string
+}) {
+  const len = Math.max(2, bottomY - topY)
+  const w = 6.5
+
+  return (
+    <g>
+      <defs>
+        <clipPath id={clipId}>
+          <rect x={x - w / 2 - 0.5} y={topY - 1} width={w + 1} height={len + 2} rx={w / 2} />
+        </clipPath>
+      </defs>
+      {/* drop shadow */}
+      <rect x={x - w / 2 + 1.5} y={topY} width={w - 1} height={len} rx={w / 2}
+        fill="rgba(6,2,0,0.55)" />
+      {/* rope body */}
+      <rect x={x - w / 2} y={topY} width={w} height={len} rx={w / 2}
+        fill={lit ? '#7c5c30' : '#4a3a20'} style={{ transition: 'fill 0.7s' }} />
+      {/* twist strand A — lighter, offset 0 */}
+      <line x1={x} y1={topY} x2={x} y2={bottomY}
+        stroke="rgba(195,150,88,0.80)" strokeWidth="3.8"
+        strokeDasharray="9,9" strokeDashoffset="0"
+        clipPath={`url(#${clipId})`} />
+      {/* twist strand B — darker, offset 9 (fills the gap of A) */}
+      <line x1={x} y1={topY} x2={x} y2={bottomY}
+        stroke="rgba(28,12,2,0.72)" strokeWidth="3.8"
+        strokeDasharray="9,9" strokeDashoffset="9"
+        clipPath={`url(#${clipId})`} />
+      {/* left-edge highlight */}
+      <line x1={x - 2} y1={topY} x2={x - 2} y2={bottomY}
+        stroke="rgba(255,220,150,0.24)" strokeWidth="1.2" strokeLinecap="round"
+        clipPath={`url(#${clipId})`} />
+    </g>
+  )
+}
+
+// ── Bead SVG helper ───────────────────────────────────────────────────────────
+// The bead group uses CSS translateY(dragOffset px) so spring transitions work.
+// The rope is drawn outside this group so only the bead translates, not the rope top.
+function Bead({ cx, cy, r, lit, isDragging, dragOffset, ropeSuffix, onBeadPointerDown }: {
+  cx: number; cy: number; r: number; lit: boolean; isDragging: boolean
+  dragOffset: number; ropeSuffix: string
+  onBeadPointerDown: (e: React.PointerEvent) => void
+}) {
+  return (
+    <g
+      style={{
+        transform: `translateY(${dragOffset}px)`,
+        transition: isDragging ? 'none' : 'transform 0.44s cubic-bezier(.34,1.56,.64,1)',
+        cursor: isDragging ? 'grabbing' : 'grab',
+      }}
+      onPointerDown={onBeadPointerDown}
+    >
+      {/* generous invisible hit area above + around bead */}
+      <rect x={cx - 22} y={cy - r - 30} width={44} height={r * 2 + 40} fill="transparent" />
+      {/* soft glow hint when lamp is off */}
+      {!lit && !isDragging && (
+        <circle cx={cx} cy={cy} r={r + 8} fill="#c8a84b" opacity="0.12"
+          style={{ animation: `ll-hint-glow-${ropeSuffix} 2.4s ease-in-out infinite` }} />
+      )}
+      {/* outer bead */}
+      <circle cx={cx} cy={cy} r={r} fill="#c8a84b" stroke="#deba58" strokeWidth="2.2" />
+      {/* inner highlight disk */}
+      <circle cx={cx} cy={cy} r={r * 0.45} fill="#f5e070" opacity="0.72" />
+      {/* specular highlight */}
+      <circle cx={cx - r * 0.38} cy={cy - r * 0.34} r={r * 0.22} fill="rgba(255,252,200,0.65)" />
+    </g>
+  )
 }
 
 // ── Modern lamp ───────────────────────────────────────────────────────────────
-function ModernLamp({ phase, col, dragOffset, isDragging, onBeadPointerDown }: SVGProps) {
-  const lit = phase !== 'off'
-  const flicker = phase === 'flicker'
+function ModernLamp({ phase, col, dragOffset, dragOffsetSVG, isDragging, ropeSuffix, onBeadPointerDown }: SVGProps) {
+  const lit = phase !== 'off', flicker = phase === 'flicker'
+  const ropeTopY = 88, beadCY = 167, beadR = 13
+  const ropeBottomY = beadCY - beadR + dragOffsetSVG
+
   return (
     <svg viewBox="0 0 200 400" width="100%" height="100%" style={{ overflow: 'visible', display: 'block' }}>
       {/* BODY */}
@@ -116,32 +177,29 @@ function ModernLamp({ phase, col, dragOffset, isDragging, onBeadPointerDown }: S
         <ellipse cx="100" cy="87" rx="62" ry="6" fill={col.beam}
           opacity={flicker ? undefined : (lit ? 0.7 : 0)}
           style={{ transition: 'opacity 0.4s', animation: flicker ? 'll-flicker 0.65s ease-out forwards' : 'none' }} />
-        {/* pole */}
+        {/* pole + base */}
         <rect x="97.5" y="87" width="5" height="242" rx="2.5" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1" />
         <rect x="98" y="87" width="2" height="242" rx="1" fill="rgba(180,180,220,0.05)" />
-        {/* base */}
         <rect x="38" y="329" width="124" height="13" rx="6" fill={LC.base} stroke={LC.baseSt} strokeWidth="1.5" />
         <ellipse cx="100" cy="329" rx="62" ry="9" fill={LC.base} stroke={LC.baseSt} strokeWidth="1" />
         <ellipse cx="100" cy="342" rx="62" ry="8" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1" />
         <ellipse cx="100" cy="337" rx="52" ry="3" fill="none" stroke={LC.hi} strokeWidth="1" />
       </g>
-      {/* STRING + BEAD */}
-      <g style={beadStyle(dragOffset, isDragging, '87px')} onPointerDown={onBeadPointerDown}>
-        <rect x="80" y="80" width="40" height="108" fill="transparent" />
-        <line x1="100" y1="87" x2="100" y2="153" stroke={lit ? '#b0b0b8' : '#666'} strokeWidth="2.5" strokeLinecap="round" style={{ transition: 'stroke 0.6s' }} />
-        <circle cx="100" cy="166" r="12" fill="#c8a84b" stroke="#e8c86a" strokeWidth="2.2"
-          style={{ animation: (lit || isDragging) ? 'none' : 'll-bead-hint 2.6s ease-in-out infinite' }} />
-        <circle cx="100" cy="166" r="5.5" fill="#f2db72" opacity="0.7" />
-        <circle cx="95.5" cy="161.5" r="2.8" fill="rgba(255,252,200,0.6)" />
-      </g>
+      {/* ROPE — top fixed at shade, bottom stretches with bead */}
+      <Rope x={100} topY={ropeTopY} bottomY={ropeBottomY} lit={lit} clipId={`rope-m-${ropeSuffix}`} />
+      {/* BEAD */}
+      <Bead cx={100} cy={beadCY} r={beadR} lit={lit} isDragging={isDragging}
+        dragOffset={dragOffset} ropeSuffix={ropeSuffix} onBeadPointerDown={onBeadPointerDown} />
     </svg>
   )
 }
 
 // ── Floor lamp ────────────────────────────────────────────────────────────────
-function FloorLamp({ phase, col, dragOffset, isDragging, onBeadPointerDown }: SVGProps) {
-  const lit = phase !== 'off'
-  const flicker = phase === 'flicker'
+function FloorLamp({ phase, col, dragOffset, dragOffsetSVG, isDragging, ropeSuffix, onBeadPointerDown }: SVGProps) {
+  const lit = phase !== 'off', flicker = phase === 'flicker'
+  const ropeTopY = 133, beadCY = 210, beadR = 13
+  const ropeBottomY = beadCY - beadR + dragOffsetSVG
+
   return (
     <svg viewBox="0 0 200 420" width="100%" height="100%" style={{ overflow: 'visible', display: 'block' }}>
       <g style={bodyStyle(phase)}>
@@ -163,22 +221,19 @@ function FloorLamp({ phase, col, dragOffset, isDragging, onBeadPointerDown }: SV
         <ellipse cx="100" cy="350" rx="62" ry="9" fill={LC.base} stroke={LC.baseSt} strokeWidth="1" />
         <ellipse cx="100" cy="363" rx="62" ry="8" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1" />
       </g>
-      <g style={beadStyle(dragOffset, isDragging, '132px')} onPointerDown={onBeadPointerDown}>
-        <rect x="80" y="124" width="40" height="108" fill="transparent" />
-        <line x1="100" y1="132" x2="100" y2="197" stroke={lit ? '#b0b0b8' : '#666'} strokeWidth="2.5" strokeLinecap="round" style={{ transition: 'stroke 0.6s' }} />
-        <circle cx="100" cy="210" r="12" fill="#c8a84b" stroke="#e8c86a" strokeWidth="2.2"
-          style={{ animation: (lit || isDragging) ? 'none' : 'll-bead-hint 2.6s ease-in-out infinite' }} />
-        <circle cx="100" cy="210" r="5.5" fill="#f2db72" opacity="0.7" />
-        <circle cx="95.5" cy="205.5" r="2.8" fill="rgba(255,252,200,0.6)" />
-      </g>
+      <Rope x={100} topY={ropeTopY} bottomY={ropeBottomY} lit={lit} clipId={`rope-f-${ropeSuffix}`} />
+      <Bead cx={100} cy={beadCY} r={beadR} lit={lit} isDragging={isDragging}
+        dragOffset={dragOffset} ropeSuffix={ropeSuffix} onBeadPointerDown={onBeadPointerDown} />
     </svg>
   )
 }
 
 // ── Pendant lamp ──────────────────────────────────────────────────────────────
-function PendantLamp({ phase, col, dragOffset, isDragging, swinging, onBeadPointerDown }: SVGProps) {
-  const lit = phase !== 'off'
-  const flicker = phase === 'flicker'
+function PendantLamp({ phase, col, dragOffset, dragOffsetSVG, isDragging, swinging, ropeSuffix, onBeadPointerDown }: SVGProps) {
+  const lit = phase !== 'off', flicker = phase === 'flicker'
+  const ropeTopY = 207, beadCY = 279, beadR = 13
+  const ropeBottomY = beadCY - beadR + dragOffsetSVG
+
   return (
     <svg viewBox="0 0 200 380" width="100%" height="100%" style={{ overflow: 'visible', display: 'block' }}>
       <g style={bodyStyle(phase)}>
@@ -198,8 +253,7 @@ function PendantLamp({ phase, col, dragOffset, isDragging, swinging, onBeadPoint
             opacity={flicker ? undefined : (lit ? 1 : 0)}
             style={{ transition: 'opacity 0.6s', animation: flicker ? 'll-flicker 0.65s ease-out forwards' : 'none' }} />
           <path d="M76 134 Q76 185 100 196 Q124 185 124 134 Z"
-            fill={lit ? col.beam : LC.body}
-            opacity={lit ? (flicker ? undefined : 0.5) : 0.9}
+            fill={lit ? col.beam : LC.body} opacity={lit ? (flicker ? undefined : 0.5) : 0.9}
             style={{ transition: 'fill 0.6s, opacity 0.6s', animation: flicker ? 'll-flicker 0.65s ease-out forwards' : 'none' }} />
           <path d="M76 134 Q76 185 100 196 Q124 185 124 134 Z" fill="none" stroke={LC.bodySt} strokeWidth="1.5" />
           <path d="M82 138 Q80 165 84 185" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeLinecap="round" />
@@ -216,23 +270,20 @@ function PendantLamp({ phase, col, dragOffset, isDragging, swinging, onBeadPoint
           <ellipse cx="100" cy="206" rx="18" ry="5" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1" />
         </g>
       </g>
-      <g style={beadStyle(dragOffset, isDragging, '206px')} onPointerDown={onBeadPointerDown}>
-        <rect x="80" y="198" width="40" height="100" fill="transparent" />
-        <line x1="100" y1="206" x2="100" y2="266" stroke={lit ? '#b0b0b8' : '#666'} strokeWidth="2.5" strokeLinecap="round" style={{ transition: 'stroke 0.6s' }} />
-        <circle cx="100" cy="279" r="12" fill="#c8a84b" stroke="#e8c86a" strokeWidth="2.2"
-          style={{ animation: (lit || isDragging) ? 'none' : 'll-bead-hint 2.6s ease-in-out infinite' }} />
-        <circle cx="100" cy="279" r="5.5" fill="#f2db72" opacity="0.7" />
-        <circle cx="95.5" cy="274.5" r="2.8" fill="rgba(255,252,200,0.6)" />
-      </g>
+      <Rope x={100} topY={ropeTopY} bottomY={ropeBottomY} lit={lit} clipId={`rope-p-${ropeSuffix}`} />
+      <Bead cx={100} cy={beadCY} r={beadR} lit={lit} isDragging={isDragging}
+        dragOffset={dragOffset} ropeSuffix={ropeSuffix} onBeadPointerDown={onBeadPointerDown} />
     </svg>
   )
 }
 
 // ── Lantern lamp ──────────────────────────────────────────────────────────────
-function LanternLamp({ phase, col, dragOffset, isDragging, swinging, onBeadPointerDown }: SVGProps) {
-  const lit = phase !== 'off'
-  const flicker = phase === 'flicker'
+function LanternLamp({ phase, col, dragOffset, dragOffsetSVG, isDragging, swinging, ropeSuffix, onBeadPointerDown }: SVGProps) {
+  const lit = phase !== 'off', flicker = phase === 'flicker'
+  const ropeTopY = 259, beadCY = 331, beadR = 13
+  const ropeBottomY = beadCY - beadR + dragOffsetSVG
   const links = [0, 14, 28, 42, 56]
+
   return (
     <svg viewBox="0 0 200 400" width="100%" height="100%" style={{ overflow: 'visible', display: 'block' }}>
       <g style={bodyStyle(phase)}>
@@ -259,23 +310,17 @@ function LanternLamp({ phase, col, dragOffset, isDragging, swinging, onBeadPoint
             opacity={flicker ? undefined : (lit ? 1 : 0)}
             style={{ transition: 'opacity 0.6s', animation: flicker ? 'll-flicker 0.65s ease-out forwards' : 'none' }} />
           {lit && (
-            <ellipse cx="100" cy="160" rx="18" ry="28" fill={col.beam}
-              opacity={flicker ? undefined : 0.4}
-              style={{ filter: 'blur(5px)', animation: flicker ? 'll-flicker 0.65s ease-out forwards' : 'none' }} />
+            <ellipse cx="100" cy="160" rx="18" ry="28" fill={col.beam} opacity="0.4"
+              style={{ filter: 'blur(5px)' }} />
           )}
           <path d="M68 218 L132 218 L122 234 L78 234 Z" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5" />
           <ellipse cx="100" cy="218" rx="32" ry="7" fill={LC.body} stroke={LC.bodySt} strokeWidth="1.5" />
           <path d="M94 234 L100 258 L106 234 Z" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5" />
         </g>
       </g>
-      <g style={beadStyle(dragOffset, isDragging, '258px')} onPointerDown={onBeadPointerDown}>
-        <rect x="80" y="250" width="40" height="100" fill="transparent" />
-        <line x1="100" y1="258" x2="100" y2="318" stroke={lit ? '#b0b0b8' : '#666'} strokeWidth="2.5" strokeLinecap="round" style={{ transition: 'stroke 0.6s' }} />
-        <circle cx="100" cy="331" r="12" fill="#c8a84b" stroke="#e8c86a" strokeWidth="2.2"
-          style={{ animation: (lit || isDragging) ? 'none' : 'll-bead-hint 2.6s ease-in-out infinite' }} />
-        <circle cx="100" cy="331" r="5.5" fill="#f2db72" opacity="0.7" />
-        <circle cx="95.5" cy="326.5" r="2.8" fill="rgba(255,252,200,0.6)" />
-      </g>
+      <Rope x={100} topY={ropeTopY} bottomY={ropeBottomY} lit={lit} clipId={`rope-l-${ropeSuffix}`} />
+      <Bead cx={100} cy={beadCY} r={beadR} lit={lit} isDragging={isDragging}
+        dragOffset={dragOffset} ropeSuffix={ropeSuffix} onBeadPointerDown={onBeadPointerDown} />
     </svg>
   )
 }
@@ -303,14 +348,36 @@ export default function LampLogin({
   const [toggling, setToggling] = useState(false)
   const [swinging, setSwinging] = useState(false)
   const [showPass, setShowPass] = useState(false)
-  const [dragOffset, setDragOffset] = useState(0)
+  const [dragOffset, setDragOffset] = useState(0)   // CSS pixels
   const [isDragging, setIsDragging] = useState(false)
+  const [svgScale, setSvgScale] = useState(1.2)       // SVG y-scale, measured via ResizeObserver
+  const lampDivRef = useRef<HTMLDivElement>(null)
   const lastDeltaRef = useRef(0)
+  const rawUid = useId()
+  // useId returns strings like ":r0:" — strip colons for valid SVG IDs
+  const ropeSuffix = rawUid.replace(/:/g, '')
 
   const col = LAMP_COLORS[lampColor]
-  const isOn = phase === 'on'
-  const isFlicker = phase === 'flicker'
-  const lit = phase !== 'off'
+  const isOn = phase === 'on', isFlicker = phase === 'flicker', lit = phase !== 'off'
+
+  // Measure SVG y-scale from the lamp container div
+  useEffect(() => {
+    const el = lampDivRef.current
+    if (!el) return
+    const vbH = lampType === 'floor' ? 420 : lampType === 'pendant' ? 380 : 400
+    const compute = () => {
+      const r = el.getBoundingClientRect()
+      if (r.width > 0 && r.height > 0)
+        setSvgScale(Math.min(r.width / 200, r.height / vbH))
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [lampType])
+
+  // Convert CSS-pixel drag to SVG user units for rope stretching
+  const dragOffsetSVG = svgScale > 0.01 ? dragOffset / svgScale : 0
 
   function triggerToggle() {
     if (toggling) return
@@ -321,12 +388,8 @@ export default function LampLogin({
     }
     setTimeout(() => {
       setToggling(false)
-      if (phase === 'on') {
-        setPhase('off')
-      } else {
-        setPhase('flicker')
-        setTimeout(() => setPhase('on'), 680)
-      }
+      if (phase === 'on') setPhase('off')
+      else { setPhase('flicker'); setTimeout(() => setPhase('on'), 680) }
     }, 220)
   }
 
@@ -338,7 +401,7 @@ export default function LampLogin({
     lastDeltaRef.current = 0
 
     const onMove = (me: PointerEvent) => {
-      const delta = Math.max(0, Math.min(65, me.clientY - startY))
+      const delta = Math.max(0, Math.min(70, me.clientY - startY))
       lastDeltaRef.current = delta
       setDragOffset(delta)
     }
@@ -346,8 +409,8 @@ export default function LampLogin({
       setIsDragging(false)
       const delta = lastDeltaRef.current
       setDragOffset(0)
-      // trigger on meaningful drag OR simple click (no drag = delta < 4)
-      if (delta > 22 || delta < 4) triggerToggle()
+      // trigger on sufficient drag OR pure click (barely moved)
+      if (delta > 22 || delta < 5) triggerToggle()
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
     }
@@ -359,6 +422,11 @@ export default function LampLogin({
     : lampType === 'pendant' ? PendantLamp
     : lampType === 'lantern' ? LanternLamp
     : ModernLamp
+
+  const svgProps: SVGProps = {
+    phase, col, dragOffset, dragOffsetSVG, isDragging, swinging,
+    ropeSuffix, onBeadPointerDown: handleBeadPointerDown,
+  }
 
   // ── Compact mode ─────────────────────────────────────────────────────────
   if (compact) {
@@ -378,13 +446,12 @@ export default function LampLogin({
             opacity: lit ? 1 : 0, transition: 'opacity 0.6s', pointerEvents: 'none', zIndex: 0,
           }} />
           <div style={{ position: 'relative', width: 110, flexShrink: 0, height: 140, zIndex: 1 }}>
-            <LampSVG phase={phase} col={col} dragOffset={dragOffset} isDragging={isDragging} swinging={swinging} onBeadPointerDown={handleBeadPointerDown} />
+            <LampSVG {...svgProps} />
           </div>
           <div style={{ flex: 1, opacity: isOn ? 1 : 0.06, filter: isOn ? 'none' : 'blur(4px)', transition: 'opacity 0.7s, filter 0.7s', zIndex: 1 }}>
             <div style={{
               background: 'rgba(10,10,16,0.96)', borderRadius: 8, padding: '8px 10px',
-              border: `1px solid ${isOn ? col.beam + '28' : 'rgba(255,255,255,0.04)'}`,
-              boxShadow: isOn ? `-6px 0 28px ${col.glow}30` : 'none', transition: 'all 0.6s',
+              border: `1px solid ${isOn ? col.beam + '28' : 'rgba(255,255,255,0.04)'}`, transition: 'all 0.6s',
             }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: '#fff', margin: '0 0 7px', textAlign: 'center' }}>{title}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -399,51 +466,43 @@ export default function LampLogin({
     )
   }
 
-  // ── Full mode — lamp left 55%, form right 45%, side by side ───────────────
-  const src = LIGHT_PCT[lampType]
-
-  // Form: lamp is to the left → light hits left face and top of form
-  const formShadow = isOn
-    ? `-12px 0 50px ${col.glow}40, 0 8px 32px rgba(0,0,0,0.65)`
-    : '0 4px 30px rgba(0,0,0,0.6)'
-  const formBg = isOn
-    ? `linear-gradient(115deg, ${col.mid} 0%, rgba(12,10,16,0.96) 50%)`
-    : 'rgba(12,10,16,0.94)'
+  // ── Full mode — lamp left 55%, form right 45% ─────────────────────────────
+  const lsrc = LIGHT_PCT[lampType]
+  const formShadow = isOn ? `-12px 0 50px ${col.glow}40, 0 8px 32px rgba(0,0,0,0.65)` : '0 4px 30px rgba(0,0,0,0.6)'
+  const formBg = isOn ? `linear-gradient(115deg, ${col.mid} 0%, rgba(12,10,16,0.96) 50%)` : 'rgba(12,10,16,0.94)'
   const formBorderL = isOn ? `1px solid ${col.beam}45` : '1px solid rgba(255,255,255,0.07)'
   const formBorderD = isOn ? `1px solid ${col.beam}18` : '1px solid rgba(255,255,255,0.04)'
 
   return (
     <>
-      <style>{KF}</style>
+      <style>{KF}
+        {/* per-instance hint glow keyframe using unique suffix so multiple instances don't clash */}
+        {`@keyframes ll-hint-glow-${ropeSuffix} { 0%,100%{opacity:.12} 50%{opacity:.38} }`}
+      </style>
       <div style={{
-        position: 'relative',
-        width: '100%',
-        minHeight: 520,
+        position: 'relative', width: '100%', minHeight: 520,
         background: 'linear-gradient(155deg, #1c1208 0%, #100d08 40%, #080808 100%)',
-        borderRadius: 16,
-        overflow: 'hidden',
-        display: 'flex',
-        boxSizing: 'border-box',
+        borderRadius: 16, overflow: 'hidden',
+        display: 'flex', boxSizing: 'border-box',
         fontFamily: 'system-ui,-apple-system,sans-serif',
       }}>
 
-        {/* Hint text */}
+        {/* hint text */}
         <p style={{
-          position: 'absolute', top: 22, left: 30,
+          position: 'absolute', top: 22, left: 30, margin: 0,
           fontSize: 8.5, color: '#3a2e1a', letterSpacing: '0.22em',
-          textTransform: 'uppercase', margin: 0, userSelect: 'none', zIndex: 3,
-          transition: 'color 0.6s',
+          textTransform: 'uppercase', userSelect: 'none', zIndex: 3,
         }}>
-          {isOn ? 'Pull the string to toggle login' : 'Pull the string to toggle login'}
+          Pull the string to toggle login
         </p>
 
-        {/* Scene light overlay */}
+        {/* scene light overlay */}
         <div style={{
           position: 'absolute', inset: 0,
           background: [
-            `radial-gradient(ellipse 14% 9% at ${src.x} ${src.y}, ${col.spot} 0%, transparent 100%)`,
-            `radial-gradient(ellipse 90% 88% at ${src.x} ${src.y}, ${col.cone} 0%, transparent 100%)`,
-            `radial-gradient(ellipse 80% 14% at ${src.x} 97%, ${col.mid} 0%, transparent 100%)`,
+            `radial-gradient(ellipse 14% 9% at ${lsrc.x} ${lsrc.y}, ${col.spot} 0%, transparent 100%)`,
+            `radial-gradient(ellipse 90% 88% at ${lsrc.x} ${lsrc.y}, ${col.cone} 0%, transparent 100%)`,
+            `radial-gradient(ellipse 80% 14% at ${lsrc.x} 97%, ${col.mid} 0%, transparent 100%)`,
           ].join(', '),
           opacity: lit ? (isFlicker ? undefined : 1) : 0,
           animation: isOn ? 'll-cone-pulse 3.4s ease-in-out infinite' : (isFlicker ? 'll-flicker 0.65s ease-out forwards' : 'none'),
@@ -451,33 +510,25 @@ export default function LampLogin({
           pointerEvents: 'none', zIndex: 0,
         }} />
 
-        {/* ── Left: Lamp (55%) ── */}
+        {/* Left: Lamp (55%) */}
         <div style={{
-          flex: '0 0 55%',
-          position: 'relative',
-          zIndex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          flex: '0 0 55%', position: 'relative', zIndex: 1,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: '20px 0 20px 20px',
         }}>
-          <div style={{ width: '100%', maxWidth: 340, aspectRatio: '340 / 480' }}>
-            <LampSVG phase={phase} col={col} dragOffset={dragOffset} isDragging={isDragging} swinging={swinging} onBeadPointerDown={handleBeadPointerDown} />
+          {/* ref on this div so ResizeObserver measures the actual SVG container */}
+          <div ref={lampDivRef} style={{ width: '100%', maxWidth: 340, aspectRatio: '340 / 480' }}>
+            <LampSVG {...svgProps} />
           </div>
         </div>
 
-        {/* ── Right: Form (45%) ── */}
+        {/* Right: Form (45%) */}
         <div style={{
-          flex: '1 1 auto',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '24px 32px 24px 12px',
-          zIndex: 1,
+          flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '24px 32px 24px 12px', zIndex: 1,
         }}>
           <div style={{
-            width: '100%',
-            maxWidth: 300,
+            width: '100%', maxWidth: 300,
             opacity: isOn ? 1 : (isFlicker ? undefined : 0.04),
             filter: isOn ? 'none' : (isFlicker ? undefined : 'blur(6px)'),
             animation: isFlicker ? 'll-flicker 0.65s ease-out forwards' : 'none',
@@ -486,12 +537,9 @@ export default function LampLogin({
             <div style={{
               position: 'relative',
               background: formBg,
-              borderTop: formBorderL,
-              borderLeft: formBorderL,
-              borderRight: formBorderD,
-              borderBottom: formBorderD,
-              borderRadius: 16,
-              padding: '26px 24px',
+              borderTop: formBorderL, borderLeft: formBorderL,
+              borderRight: formBorderD, borderBottom: formBorderD,
+              borderRadius: 16, padding: '26px 24px',
               backdropFilter: 'blur(20px)',
               boxShadow: formShadow,
               transition: 'box-shadow 0.7s ease, background 0.7s ease, border-color 0.7s ease',
@@ -506,45 +554,32 @@ export default function LampLogin({
 
               <h2 style={{
                 position: 'relative', textAlign: 'center', margin: '0 0 20px',
-                fontSize: 20, fontWeight: 700, color: '#ffffff',
-                letterSpacing: '-0.02em',
-                textShadow: isOn ? `0 0 30px ${col.beam}60` : 'none',
-                transition: 'text-shadow 0.6s',
-              }}>
-                {title}
-              </h2>
+                fontSize: 20, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em',
+                textShadow: isOn ? `0 0 30px ${col.beam}60` : 'none', transition: 'text-shadow 0.6s',
+              }}>{title}</h2>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 11, position: 'relative' }}>
                 <input readOnly placeholder="Email address" type="email" style={fld(col, isOn)} />
-
                 <div style={{ position: 'relative' }}>
                   <input readOnly placeholder="Password" type={showPass ? 'text' : 'password'}
                     style={{ ...fld(col, isOn), paddingRight: 36 }} />
                   <button onClick={() => setShowPass(v => !v)} style={{
                     position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
                     background: 'none', border: 'none', color: '#505068', cursor: 'pointer', fontSize: 13, padding: 2,
-                  }}>
-                    {showPass ? '◉' : '◎'}
-                  </button>
+                  }}>{showPass ? '◉' : '◎'}</button>
                 </div>
-
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontSize: 11, color: '#8b7cf8', cursor: 'pointer' }}>Forgot Password?</span>
                 </div>
-
                 <button style={{
-                  width: '100%', padding: '12px',
-                  borderRadius: 9, border: 'none',
+                  width: '100%', padding: '12px', borderRadius: 9, border: 'none',
                   background: isOn ? col.btnGrad : 'rgba(60,40,100,0.4)',
                   color: isOn ? '#fff' : '#706880',
                   fontSize: 13, fontWeight: 700, cursor: isOn ? 'pointer' : 'default',
                   letterSpacing: '0.08em', textTransform: 'uppercase',
                   transition: 'background 0.6s, color 0.6s',
                   boxShadow: isOn ? `0 4px 22px ${col.glow}40` : 'none',
-                }}>
-                  {buttonLabel}
-                </button>
-
+                }}>{buttonLabel}</button>
                 {showGoogle && (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
