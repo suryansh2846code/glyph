@@ -1214,7 +1214,7 @@ function LivePreviewRenderer({ item, props, selectedSubLoader, onSelectSubLoader
     return (
       <LampLogin
         lampType={props.lampType ?? 'modern'}
-        lampColor={props.lampColor ?? 'amber'}
+        lightColor={props.lightColor}
         title={props.title ?? 'Welcome Back'}
         buttonLabel={props.buttonLabel ?? 'Sign In'}
         showGoogle={props.showGoogle !== false}

@@ -5,19 +5,25 @@ type LampColor  = 'amber' | 'cool' | 'rose'
 type Phase      = 'off'   | 'flicker' | 'on'
 type Vec2       = { x: number; y: number }
 
-// ── Color palettes ────────────────────────────────────────────────────────────
-const LAMP_COLORS: Record<LampColor, {
-  beam: string; cone: string; mid: string; glow: string; spot: string; btnGrad: string
-}> = {
-  amber: { beam:'#f59e0b', cone:'rgba(245,158,11,0.24)', mid:'rgba(245,158,11,0.08)', glow:'rgba(245,158,11,0.72)', spot:'rgba(245,158,11,0.55)', btnGrad:'linear-gradient(135deg,#7c3aed,#6d28d9)' },
-  cool:  { beam:'#93c5fd', cone:'rgba(147,197,253,0.20)', mid:'rgba(147,197,253,0.07)', glow:'rgba(147,197,253,0.65)', spot:'rgba(147,197,253,0.50)', btnGrad:'linear-gradient(135deg,#0ea5e9,#2563eb)' },
-  rose:  { beam:'#f9a8d4', cone:'rgba(249,168,212,0.22)', mid:'rgba(249,168,212,0.08)', glow:'rgba(249,168,212,0.68)', spot:'rgba(249,168,212,0.52)', btnGrad:'linear-gradient(135deg,#ec4899,#be185d)' },
-}
-
-// ── Color generation from any hue (0-360) ────────────────────────────────────
+// ── Color presets + dynamic palette from hue ──────────────────────────────────
 const PRESET_HUES: Record<LampColor, number> = { amber:38, cool:210, rose:330 }
 
-function makeCol(h: number): (typeof LAMP_COLORS)[LampColor] {
+function hexToHue(hex: string): number {
+  if (!hex.startsWith('#') || hex.length < 7) return 38
+  const r = parseInt(hex.slice(1,3),16)/255
+  const g = parseInt(hex.slice(3,5),16)/255
+  const b = parseInt(hex.slice(5,7),16)/255
+  const max = Math.max(r,g,b), min = Math.min(r,g,b)
+  if (max === min) return 0
+  const d = max - min
+  let h: number
+  if      (max === r) h = ((g-b)/d + (g<b?6:0)) / 6
+  else if (max === g) h = ((b-r)/d + 2) / 6
+  else                h = ((r-g)/d + 4) / 6
+  return Math.round(h * 360)
+}
+
+function makeCol(h: number) {
   return {
     beam:    `hsl(${h},90%,64%)`,
     cone:    `hsla(${h},90%,64%,0.22)`,
@@ -25,19 +31,19 @@ function makeCol(h: number): (typeof LAMP_COLORS)[LampColor] {
     glow:    `hsla(${h},95%,60%,0.75)`,
     spot:    `hsla(${h},90%,64%,0.55)`,
     btnGrad: `linear-gradient(135deg,hsl(${(h+200)%360},55%,38%),hsl(${(h+230)%360},50%,32%))`,
+    beam0:   `hsla(${h},90%,64%,0)`,
+    beam55:  `hsla(${h},90%,64%,0.55)`,
+    mid10:   `hsla(${h},90%,64%,0.10)`,
   }
 }
 
-// ── Attachment points (SVG user units) for rope top ───────────────────────────
-// For pendant/lantern these are LOCAL coords inside the swinging group.
-// We rotate them by swingAngle to get absolute SVG coords.
+// ── Rope attachment + rest positions ──────────────────────────────────────────
 const ATTACH: Record<LampType, Vec2> = {
   modern:  { x:100, y:88  },
   floor:   { x:100, y:133 },
   pendant: { x:100, y:207 },
   lantern: { x:100, y:259 },
 }
-// Pivot points for pendant/lantern swing (top anchor, in SVG root coords)
 const SWING_PIVOT: Partial<Record<LampType, Vec2>> = {
   pendant: { x:100, y:14 },
   lantern: { x:100, y:10 },
@@ -50,7 +56,6 @@ const REST: Record<LampType, Vec2> = {
 }
 const BEAD_R = 13
 
-// Rotate a point around a pivot by angle (radians)
 function rotateAround(pt: Vec2, pivot: Vec2, angle: number): Vec2 {
   const dx = pt.x - pivot.x, dy = pt.y - pivot.y
   return {
@@ -58,25 +63,21 @@ function rotateAround(pt: Vec2, pivot: Vec2, angle: number): Vec2 {
     y: pivot.y + dx * Math.sin(angle) + dy * Math.cos(angle),
   }
 }
-
-// Compute actual rope attachment point in SVG root coords (accounts for swing)
 function computeAttach(type: LampType, angle: number): Vec2 {
   const pivot = SWING_PIVOT[type]
   if (!pivot || angle === 0) return ATTACH[type]
   return rotateAround(ATTACH[type], pivot, angle)
 }
 
-// ── Rope path: quadratic bezier that sags with gravity when pulled sideways ──
+// ── Rope bezier path ──────────────────────────────────────────────────────────
 function ropePath(attach: Vec2, bx: number, by: number): string {
   const ex = bx, ey = by - BEAD_R
   const dx = ex - attach.x, dy = ey - attach.y
   const sag = Math.max(0, Math.abs(dx) * 0.28 + Math.max(0, -dy) * 0.12)
-  const cpX = (attach.x + ex) / 2
-  const cpY = (attach.y + ey) / 2 + sag
-  return `M ${attach.x} ${attach.y} Q ${cpX} ${cpY} ${ex} ${ey}`
+  return `M ${attach.x} ${attach.y} Q ${(attach.x+ex)/2} ${(attach.y+ey)/2+sag} ${ex} ${ey}`
 }
 
-// ── Keyframes (no ll-swing — that's now JS spring) ────────────────────────────
+// ── Keyframes ─────────────────────────────────────────────────────────────────
 const KF = `
 @keyframes ll-flicker {
   0%,100%{opacity:0} 10%{opacity:.85} 16%{opacity:0}
@@ -86,311 +87,470 @@ const KF = `
 @keyframes ll-cone-pulse { 0%,100%{opacity:1} 50%{opacity:.74} }
 `
 
-// ── Lamp colours ──────────────────────────────────────────────────────────────
-const LC = {
-  shade:'#333344', shadeSt:'#525266',
-  body:'#28283a',  bodySt:'#424256',
-  pole:'#20202e',  poleSt:'#363648',
-  base:'#2c2c3e',  baseSt:'#464658',
-  hi:'rgba(180,180,220,0.20)',
+// ── Material colours for lamp bodies ─────────────────────────────────────────
+const M = {
+  /* shade gradient stops */
+  shHi:  '#828298', shMid: '#484860', shLo:  '#1c1c28',
+  /* pole */
+  poHi:  '#56567a', poMid: '#303048', poLo:  '#080810',
+  /* base */
+  baHi:  '#484864', baMid: '#242436', baLo:  '#0e0e1a',
+  /* rim / stroke */
+  rim:   '#484862',
 }
+
 function bodyStyle(phase: Phase): React.CSSProperties {
   const lit = phase !== 'off', fl = phase === 'flicker'
   return {
-    opacity:    fl ? undefined : (lit ? 1 : 0.50),
+    opacity:    fl ? undefined : (lit ? 1 : 0.55),
     transition: fl ? 'none' : 'opacity 0.9s ease',
     animation:  fl ? 'll-flicker 0.65s ease-out forwards' : 'none',
   }
 }
 
-// ── Rope SVG — lit by lamp color when on ─────────────────────────────────────
-function Rope({ d, lit, col }: {
-  d: string; lit: boolean; col: (typeof LAMP_COLORS)[LampColor]
-}) {
+// ── Rope (path-based, lit by lamp color) ──────────────────────────────────────
+function Rope({ d, lit, col }: { d:string; lit:boolean; col:ReturnType<typeof makeCol> }) {
   return (
     <g style={{ pointerEvents:'none' }}>
-      {/* glow bloom from lamp illumination */}
-      <path d={d} fill="none" stroke={col.cone} strokeWidth="16" strokeLinecap="round"
-        opacity={lit?0.85:0} style={{ filter:'blur(6px)', transition:'opacity 0.7s' }}/>
-      {/* drop shadow (always) */}
-      <path d={d} fill="none" stroke="rgba(4,1,0,0.72)" strokeWidth="9.5" strokeLinecap="round"/>
-      {/* rope body — warmer/brighter when lit */}
-      <path d={d} fill="none" stroke={lit?'#9c7040':'#3a2a14'} strokeWidth="7.5"
-        strokeLinecap="round" style={{ transition:'stroke 0.7s' }}/>
-      {/* twist strand A — takes lamp color when lit */}
-      <path d={d} fill="none"
-        stroke={lit ? col.glow : 'rgba(148,112,54,0.60)'}
-        strokeWidth="4" strokeDasharray="9,9" strokeDashoffset="0"
-        strokeLinecap="butt" style={{ transition:'stroke 0.7s' }}/>
-      {/* twist strand B — shadow/dark side stays dark */}
-      <path d={d} fill="none" stroke="rgba(14,5,0,0.82)"
-        strokeWidth="4" strokeDasharray="9,9" strokeDashoffset="9" strokeLinecap="butt"/>
-      {/* rim highlight — lamp-colored when lit */}
-      <path d={d} fill="none"
-        stroke={lit ? col.glow : 'rgba(190,145,70,0.14)'}
-        strokeWidth="1.4" strokeLinecap="round"
-        opacity={lit?0.55:1} style={{ transition:'stroke 0.7s, opacity 0.7s' }}/>
+      <path d={d} fill="none" stroke={col.cone}          strokeWidth="16" strokeLinecap="round" opacity={lit?0.85:0} style={{filter:'blur(6px)',transition:'opacity 0.7s'}}/>
+      <path d={d} fill="none" stroke="rgba(3,1,0,0.75)"  strokeWidth="9.5" strokeLinecap="round"/>
+      <path d={d} fill="none" stroke={lit?'#9c7040':'#3a2a14'} strokeWidth="7.5" strokeLinecap="round" style={{transition:'stroke 0.7s'}}/>
+      <path d={d} fill="none" stroke={lit?col.glow:'rgba(148,112,54,0.60)'} strokeWidth="4" strokeDasharray="9,9" strokeDashoffset="0"  strokeLinecap="butt" style={{transition:'stroke 0.7s'}}/>
+      <path d={d} fill="none" stroke="rgba(14,5,0,0.82)"  strokeWidth="4" strokeDasharray="9,9" strokeDashoffset="9"  strokeLinecap="butt"/>
+      <path d={d} fill="none" stroke={lit?col.glow:'rgba(190,145,70,0.14)'} strokeWidth="1.4" strokeLinecap="round" opacity={lit?0.55:1} style={{transition:'stroke 0.7s,opacity 0.7s'}}/>
     </g>
   )
 }
 
-// ── Bead SVG ──────────────────────────────────────────────────────────────────
+// ── Bead ──────────────────────────────────────────────────────────────────────
 function Bead({ cx, cy, lit, isDragging, hintId, onPointerDown }: {
   cx:number; cy:number; lit:boolean; isDragging:boolean
   hintId:string; onPointerDown:(e:React.PointerEvent)=>void
 }) {
   return (
-    <g onPointerDown={onPointerDown} style={{ cursor: isDragging?'grabbing':'grab' }}>
-      <circle cx={cx} cy={cy} r={BEAD_R + 14} fill="transparent"/>
+    <g onPointerDown={onPointerDown} style={{ cursor:isDragging?'grabbing':'grab' }}>
+      <circle cx={cx} cy={cy} r={BEAD_R+14} fill="transparent"/>
       {!lit && !isDragging && (
-        <circle cx={cx} cy={cy} r={BEAD_R + 9} fill="#c8a84b" opacity="0.10"
+        <circle cx={cx} cy={cy} r={BEAD_R+9} fill="#c8a84b" opacity="0.10"
           style={{ animation:`${hintId} 2.4s ease-in-out infinite` }}/>
       )}
-      <circle cx={cx} cy={cy} r={BEAD_R}          fill="#c8a84b" stroke="#deba58" strokeWidth="2.2"/>
-      <circle cx={cx} cy={cy} r={BEAD_R * 0.46}   fill="#f5e070" opacity="0.72"/>
-      <circle cx={cx - BEAD_R*0.38} cy={cy - BEAD_R*0.34} r={BEAD_R*0.22} fill="rgba(255,252,200,0.65)"/>
+      <circle cx={cx} cy={cy} r={BEAD_R}         fill="url(#bead-sh)" stroke="#deba58" strokeWidth="2.2"/>
+      <circle cx={cx} cy={cy} r={BEAD_R*0.46}    fill="#f5e070" opacity="0.72"/>
+      <circle cx={cx-BEAD_R*0.38} cy={cy-BEAD_R*0.34} r={BEAD_R*0.22} fill="rgba(255,252,200,0.65)"/>
     </g>
   )
 }
 
-// ── Color wheel picker ────────────────────────────────────────────────────────
-function ColorWheel({ hue, onChange }: { hue: number; onChange: (h: number) => void }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const SIZE = 76, CX = 38, CY = 38, R = 30
-
-  function getHue(e: { clientX: number; clientY: number }) {
-    const el = ref.current; if (!el) return 0
-    const rect = el.getBoundingClientRect()
-    const x = e.clientX - (rect.left + rect.width / 2)
-    const y = e.clientY - (rect.top + rect.height / 2)
-    return ((Math.atan2(y, x) * 180 / Math.PI) + 90 + 360) % 360
-  }
-
-  // Indicator position: hue 0° = top, clockwise
-  const mathAngle = (hue - 90) * (Math.PI / 180)
-  const ix = CX + R * Math.cos(mathAngle)
-  const iy = CY + R * Math.sin(mathAngle)
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-      <span style={{ fontSize:8.5, color:'#4a3a24', letterSpacing:'0.2em', textTransform:'uppercase', userSelect:'none' }}>
-        Light Color
-      </span>
-      <div
-        ref={ref}
-        style={{
-          position:'relative', width:SIZE, height:SIZE, borderRadius:'50%',
-          background:'conic-gradient(' + [0,30,60,90,120,150,180,210,240,270,300,330,360]
-            .map(h=>`hsl(${h},90%,64%)`).join(',') + ')',
-          cursor:'crosshair',
-          boxShadow:`0 0 0 1.5px rgba(255,255,255,0.07), 0 0 20px hsla(${hue},80%,50%,0.40)`,
-          transition:'box-shadow 0.3s',
-        }}
-        onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); onChange(getHue(e)) }}
-        onPointerMove={e => { if (e.buttons) onChange(getHue(e)) }}
-      >
-        {/* center dark hole */}
-        <div style={{
-          position:'absolute', top:'26%', left:'26%', width:'48%', height:'48%',
-          borderRadius:'50%', background:'#080610',
-          boxShadow:'inset 0 1px 4px rgba(0,0,0,0.8)',
-        }}/>
-        {/* selected hue indicator */}
-        <div style={{
-          position:'absolute',
-          left: ix - 7, top: iy - 7,
-          width:14, height:14, borderRadius:'50%',
-          background:`hsl(${hue},90%,64%)`,
-          border:'2.5px solid #fff',
-          boxShadow:`0 0 10px hsla(${hue},90%,60%,0.9), 0 1px 4px rgba(0,0,0,0.9)`,
-          pointerEvents:'none',
-          transition:'background 0.05s',
-        }}/>
-      </div>
-    </div>
-  )
-}
+// ── Shared SVG defs (bead gradient — no instance ID needed, identical) ────────
+const SHARED_DEFS = (
+  <defs>
+    <radialGradient id="bead-sh" cx="38%" cy="32%" r="68%">
+      <stop offset="0%"   stopColor="#f0c84a"/>
+      <stop offset="55%"  stopColor="#c8a030"/>
+      <stop offset="100%" stopColor="#7a5818"/>
+    </radialGradient>
+  </defs>
+)
 
 // ── SVG props ─────────────────────────────────────────────────────────────────
 interface SVGProps {
   phase: Phase
-  col: (typeof LAMP_COLORS)[LampColor]
+  col: ReturnType<typeof makeCol>
   beadPos: Vec2
-  attachPos: Vec2         // actual rope-top in SVG root coords (rotated for pendant/lantern)
-  swingAngle: number      // JS-driven pendulum angle (radians) — 0 for modern/floor
+  attachPos: Vec2
+  swingAngle: number
   isDragging: boolean
   hintId: string
+  uid: string
   svgRef: React.RefObject<SVGSVGElement | null>
   onBeadPointerDown: (e: React.PointerEvent) => void
 }
 
+// ── Flicker helpers ───────────────────────────────────────────────────────────
+function fk(fl:boolean) { return fl ? 'll-flicker 0.65s ease-out forwards' : 'none' }
+function fadeProp(fl:boolean, lit:boolean, val:number) { return { opacity: fl?undefined:(lit?val:0), style:{transition:'opacity 0.5s', animation:fk(fl)} } }
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ── Modern lamp ───────────────────────────────────────────────────────────────
-function ModernLamp({ phase, col, beadPos, attachPos, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
+// ─────────────────────────────────────────────────────────────────────────────
+function ModernLamp({ phase, col, beadPos, attachPos, isDragging, hintId, uid, svgRef, onBeadPointerDown }: SVGProps) {
   const lit = phase !== 'off', fl = phase === 'flicker'
   const rd = ropePath(attachPos, beadPos.x, beadPos.y)
+  const s = `sh${uid}`, p = `po${uid}`, b = `ba${uid}`, c = `co${uid}`, gi = `gi${uid}`
 
   return (
     <svg ref={svgRef} viewBox="0 0 200 400" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
+      {SHARED_DEFS}
+      <defs>
+        <linearGradient id={s} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor={M.shHi}/>
+          <stop offset="22%"  stopColor={M.shMid}/>
+          <stop offset="70%"  stopColor={M.shLo}/>
+          <stop offset="100%" stopColor="#0e0e18"/>
+        </linearGradient>
+        <linearGradient id={p} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor={M.poLo}/>
+          <stop offset="28%"  stopColor={M.poMid}/>
+          <stop offset="46%"  stopColor={M.poHi}/>
+          <stop offset="58%"  stopColor={M.poMid}/>
+          <stop offset="100%" stopColor={M.poLo}/>
+        </linearGradient>
+        <radialGradient id={b} cx="38%" cy="30%" r="72%">
+          <stop offset="0%"   stopColor={M.baHi}/>
+          <stop offset="55%"  stopColor={M.baMid}/>
+          <stop offset="100%" stopColor={M.baLo}/>
+        </radialGradient>
+        {/* cone: bright at source, fades down */}
+        <linearGradient id={c} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%"   stopColor={col.beam} stopOpacity="0.60"/>
+          <stop offset="100%" stopColor={col.beam} stopOpacity="0"/>
+        </linearGradient>
+        {/* inner shade glow */}
+        <radialGradient id={gi} cx="50%" cy="100%" r="90%">
+          <stop offset="0%"   stopColor={col.beam} stopOpacity="0.70"/>
+          <stop offset="100%" stopColor={col.beam} stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+
+      {/* Room atmosphere when lit */}
+      {lit && <ellipse cx="100" cy="180" rx="195" ry="230" fill={col.mid} opacity={fl?undefined:0.55} style={{filter:'blur(55px)',transition:'opacity 0.7s',animation:fk(fl)}}/>}
+      {/* Floor pool */}
+      <ellipse cx="100" cy="356" rx="110" ry="16" fill={lit?col.cone:'rgba(0,0,0,0)'} style={{filter:'blur(20px)',transition:'fill 0.7s'}}/>
+      {/* Floor shadow (always) */}
+      <ellipse cx="100" cy="350" rx="75" ry="8" fill="rgba(0,0,0,0.72)" style={{filter:'blur(10px)'}}/>
+
       <g style={bodyStyle(phase)}>
-        <ellipse cx="100" cy="70" rx="82" ry="12" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
-        <ellipse cx="100" cy="65" rx="72" ry="5"  fill="none"     stroke={LC.hi}      strokeWidth="1.5"/>
-        <path d="M20 66 L180 66 L168 87 L32 87 Z" fill={LC.body}  stroke={LC.bodySt}  strokeWidth="1"/>
-        <ellipse cx="100" cy="87" rx="68" ry="7"  fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1"/>
+        {/* Light cone */}
+        <polygon points="32,87 168,87 560,900 -360,900" fill={`url(#${c})`}
+          {...fadeProp(fl,lit,1)} style={{transition:'opacity 0.6s',animation:fk(fl)}}/>
+        {/* Glow bloom */}
         <ellipse cx="100" cy="87" rx="110" ry="60" fill={col.spot}
-          opacity={fl?undefined:(lit?1:0)}
-          style={{filter:'blur(18px)',transition:'opacity 0.5s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-        <polygon points="32,87 168,87 520,800 -320,800" fill={col.cone}
-          opacity={fl?undefined:(lit?1:0)}
-          style={{transition:'opacity 0.6s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-        <ellipse cx="100" cy="87" rx="62" ry="6" fill={col.beam}
-          opacity={fl?undefined:(lit?0.7:0)}
-          style={{transition:'opacity 0.4s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-        <rect x="97.5" y="87" width="5" height="242" rx="2.5" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
-        <rect x="98"   y="87" width="2" height="242" rx="1"   fill="rgba(180,180,220,0.05)"/>
-        <rect x="38" y="329" width="124" height="13" rx="6" fill={LC.base} stroke={LC.baseSt} strokeWidth="1.5"/>
-        <ellipse cx="100" cy="329" rx="62" ry="9" fill={LC.base} stroke={LC.baseSt} strokeWidth="1"/>
-        <ellipse cx="100" cy="342" rx="62" ry="8" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
-        <ellipse cx="100" cy="337" rx="52" ry="3" fill="none"   stroke={LC.hi}      strokeWidth="1"/>
+          {...fadeProp(fl,lit,1)} style={{filter:'blur(18px)',transition:'opacity 0.5s',animation:fk(fl)}}/>
+
+        {/* Top cap */}
+        <ellipse cx="100" cy="70" rx="82" ry="12" fill={`url(#${s})`} stroke={M.rim} strokeWidth="1.2"/>
+        <ellipse cx="100" cy="65" rx="72" ry="5"  fill="none" stroke="rgba(200,200,255,0.14)" strokeWidth="1.5"/>
+
+        {/* Shade body */}
+        <path d="M20 66 L180 66 L168 87 L32 87 Z" fill={`url(#${s})`} stroke={M.rim} strokeWidth="1"/>
+        {/* Shade inner warm fill when lit */}
+        <path d="M20 66 L180 66 L168 87 L32 87 Z" fill={`url(#${gi})`}
+          opacity={fl?undefined:(lit?1:0)} style={{transition:'opacity 0.6s',animation:fk(fl)}}/>
+        {/* Shade edge highlight */}
+        <line x1="22" y1="67" x2="30" y2="87"  stroke="rgba(180,180,220,0.18)" strokeWidth="1.5" strokeLinecap="round"/>
+
+        {/* Bottom rim */}
+        <ellipse cx="100" cy="87" rx="68" ry="7"  fill={`url(#${s})`} stroke={M.rim} strokeWidth="1"/>
+        <ellipse cx="100" cy="87" rx="62" ry="6"  fill={col.beam} {...fadeProp(fl,lit,0.7)} style={{filter:'blur(2px)',transition:'opacity 0.4s',animation:fk(fl)}}/>
+
+        {/* Pole */}
+        <rect x="97" y="87" width="6" height="242" rx="3" fill={`url(#${p})`}/>
+        <rect x="99.5" y="90" width="1.5" height="236" rx="0.75" fill="rgba(160,160,220,0.12)"/>
+
+        {/* Base shadow ring */}
+        <ellipse cx="100" cy="334" rx="64" ry="6" fill="rgba(0,0,0,0.55)"/>
+        {/* Base body */}
+        <rect  x="38"  y="329" width="124" height="13" rx="6" fill={`url(#${b})`} stroke={M.rim} strokeWidth="1.2"/>
+        <ellipse cx="100" cy="329" rx="62" ry="9" fill={`url(#${b})`} stroke={M.rim} strokeWidth="1"/>
+        <ellipse cx="100" cy="342" rx="62" ry="8" fill={M.baLo}/>
+        <ellipse cx="100" cy="337" rx="52" ry="3" fill="none" stroke="rgba(180,180,220,0.10)" strokeWidth="1"/>
       </g>
+
       <Rope d={rd} lit={lit} col={col}/>
       <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 // ── Floor lamp ────────────────────────────────────────────────────────────────
-function FloorLamp({ phase, col, beadPos, attachPos, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
+// ─────────────────────────────────────────────────────────────────────────────
+function FloorLamp({ phase, col, beadPos, attachPos, isDragging, hintId, uid, svgRef, onBeadPointerDown }: SVGProps) {
   const lit = phase !== 'off', fl = phase === 'flicker'
   const rd = ropePath(attachPos, beadPos.x, beadPos.y)
+  const s = `fsh${uid}`, p = `fpo${uid}`, b = `fba${uid}`, c = `fco${uid}`, gi = `fgi${uid}`
 
   return (
     <svg ref={svgRef} viewBox="0 0 200 420" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
+      {SHARED_DEFS}
+      <defs>
+        <linearGradient id={s} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor={M.shHi}/>
+          <stop offset="22%"  stopColor={M.shMid}/>
+          <stop offset="72%"  stopColor={M.shLo}/>
+          <stop offset="100%" stopColor="#0e0e18"/>
+        </linearGradient>
+        <linearGradient id={p} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor={M.poLo}/>
+          <stop offset="30%"  stopColor={M.poMid}/>
+          <stop offset="48%"  stopColor={M.poHi}/>
+          <stop offset="60%"  stopColor={M.poMid}/>
+          <stop offset="100%" stopColor={M.poLo}/>
+        </linearGradient>
+        <radialGradient id={b} cx="38%" cy="30%" r="72%">
+          <stop offset="0%"   stopColor={M.baHi}/>
+          <stop offset="55%"  stopColor={M.baMid}/>
+          <stop offset="100%" stopColor={M.baLo}/>
+        </radialGradient>
+        <linearGradient id={c} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%"   stopColor={col.beam} stopOpacity="0.58"/>
+          <stop offset="100%" stopColor={col.beam} stopOpacity="0"/>
+        </linearGradient>
+        <radialGradient id={gi} cx="50%" cy="100%" r="90%">
+          <stop offset="0%"   stopColor={col.beam} stopOpacity="0.68"/>
+          <stop offset="100%" stopColor={col.beam} stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+
+      {lit && <ellipse cx="100" cy="180" rx="195" ry="235" fill={col.mid} opacity={fl?undefined:0.50} style={{filter:'blur(55px)',transition:'opacity 0.7s',animation:fk(fl)}}/>}
+      <ellipse cx="100" cy="372" rx="110" ry="16" fill={lit?col.cone:'rgba(0,0,0,0)'} style={{filter:'blur(22px)',transition:'fill 0.7s'}}/>
+      <ellipse cx="100" cy="366" rx="75"  ry="8"  fill="rgba(0,0,0,0.72)" style={{filter:'blur(10px)'}}/>
+
       <g style={bodyStyle(phase)}>
-        <ellipse cx="100" cy="56" rx="20" ry="7" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
-        <ellipse cx="100" cy="54" rx="14" ry="3" fill="none"     stroke={LC.hi}      strokeWidth="1"/>
-        <path d="M80 56 L120 56 L178 132 L22 132 Z" fill={LC.body} stroke={LC.bodySt} strokeWidth="1"/>
-        <ellipse cx="100" cy="132" rx="78" ry="12" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
-        <ellipse cx="100" cy="132" rx="100" ry="52" fill={col.spot}
-          opacity={fl?undefined:(lit?1:0)}
-          style={{filter:'blur(20px)',transition:'opacity 0.5s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-        <polygon points="22,132 178,132 520,800 -320,800" fill={col.cone}
-          opacity={fl?undefined:(lit?1:0)}
-          style={{transition:'opacity 0.6s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-        <ellipse cx="100" cy="132" rx="70" ry="7" fill={col.beam}
-          opacity={fl?undefined:(lit?0.65:0)}
-          style={{transition:'opacity 0.4s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-        <rect x="97.5" y="132" width="5" height="218" rx="2.5" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
-        <rect x="38" y="350" width="124" height="13" rx="6" fill={LC.base} stroke={LC.baseSt} strokeWidth="1.5"/>
-        <ellipse cx="100" cy="350" rx="62" ry="9" fill={LC.base} stroke={LC.baseSt} strokeWidth="1"/>
-        <ellipse cx="100" cy="363" rx="62" ry="8" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
+        {/* Small top cap */}
+        <ellipse cx="100" cy="56" rx="20" ry="7" fill={`url(#${s})`} stroke={M.rim} strokeWidth="1.2"/>
+        <ellipse cx="100" cy="53" rx="13" ry="3" fill="none" stroke="rgba(200,200,255,0.12)" strokeWidth="1"/>
+
+        {/* Cone */}
+        <polygon points="22,132 178,132 560,900 -360,900" fill={`url(#${c})`} {...fadeProp(fl,lit,1)} style={{transition:'opacity 0.6s',animation:fk(fl)}}/>
+        <ellipse cx="100" cy="132" rx="100" ry="52" fill={col.spot} {...fadeProp(fl,lit,1)} style={{filter:'blur(20px)',transition:'opacity 0.5s',animation:fk(fl)}}/>
+
+        {/* Shade */}
+        <path d="M80 56 L120 56 L178 132 L22 132 Z" fill={`url(#${s})`} stroke={M.rim} strokeWidth="1"/>
+        <path d="M80 56 L120 56 L178 132 L22 132 Z" fill={`url(#${gi})`} opacity={fl?undefined:(lit?1:0)} style={{transition:'opacity 0.6s',animation:fk(fl)}}/>
+        <line x1="22" y1="133" x2="25" y2="120" stroke="rgba(180,180,220,0.16)" strokeWidth="1.5" strokeLinecap="round"/>
+
+        {/* Bottom rim */}
+        <ellipse cx="100" cy="132" rx="78" ry="12" fill={`url(#${s})`} stroke={M.rim} strokeWidth="1.2"/>
+        <ellipse cx="100" cy="132" rx="70" ry="7" fill={col.beam} {...fadeProp(fl,lit,0.65)} style={{filter:'blur(2px)',transition:'opacity 0.4s',animation:fk(fl)}}/>
+
+        {/* Pole */}
+        <rect x="97" y="132" width="6" height="218" rx="3" fill={`url(#${p})`}/>
+        <rect x="99.5" y="136" width="1.5" height="210" rx="0.75" fill="rgba(160,160,220,0.10)"/>
+
+        {/* Base */}
+        <ellipse cx="100" cy="356" rx="64" ry="6" fill="rgba(0,0,0,0.55)"/>
+        <rect  x="38"  y="350" width="124" height="13" rx="6" fill={`url(#${b})`} stroke={M.rim} strokeWidth="1.2"/>
+        <ellipse cx="100" cy="350" rx="62" ry="9" fill={`url(#${b})`} stroke={M.rim} strokeWidth="1"/>
+        <ellipse cx="100" cy="363" rx="62" ry="8" fill={M.baLo}/>
+        <ellipse cx="100" cy="358" rx="52" ry="3" fill="none" stroke="rgba(180,180,220,0.10)" strokeWidth="1"/>
       </g>
+
       <Rope d={rd} lit={lit} col={col}/>
       <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 // ── Pendant lamp ──────────────────────────────────────────────────────────────
-function PendantLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
+// ─────────────────────────────────────────────────────────────────────────────
+function PendantLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, hintId, uid, svgRef, onBeadPointerDown }: SVGProps) {
   const lit = phase !== 'off', fl = phase === 'flicker'
   const rd = ropePath(attachPos, beadPos.x, beadPos.y)
-  const swingDeg = swingAngle * (180 / Math.PI)
+  const swingDeg = swingAngle * (180/Math.PI)
+  const cord = `pco${uid}`, bulb = `pbu${uid}`, shade = `psh${uid}`, cone = `pce${uid}`
 
   return (
     <svg ref={svgRef} viewBox="0 0 200 380" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
-      {/* Rope behind lamp body so ceiling fixture overlaps the top */}
+      {SHARED_DEFS}
+      <defs>
+        <linearGradient id={cord} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor="#0a0a14"/>
+          <stop offset="40%"  stopColor="#38384e"/>
+          <stop offset="52%"  stopColor="#505068"/>
+          <stop offset="65%"  stopColor="#38384e"/>
+          <stop offset="100%" stopColor="#0a0a14"/>
+        </linearGradient>
+        <radialGradient id={bulb} cx="50%" cy="40%" r="60%">
+          <stop offset="0%"   stopColor={lit?col.beam:'#e8e8f0'}/>
+          <stop offset="60%"  stopColor={lit?col.glow:'#a0a0b8'} stopOpacity="0.6"/>
+          <stop offset="100%" stopColor={lit?col.beam:'#606078'} stopOpacity="0"/>
+        </radialGradient>
+        <linearGradient id={shade} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor={M.shHi}/>
+          <stop offset="25%"  stopColor={M.shMid}/>
+          <stop offset="75%"  stopColor={M.shLo}/>
+          <stop offset="100%" stopColor="#0e0e18"/>
+        </linearGradient>
+        <linearGradient id={cone} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%"   stopColor={col.beam} stopOpacity="0.55"/>
+          <stop offset="100%" stopColor={col.beam} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+
       <Rope d={rd} lit={lit} col={col}/>
+
+      {lit && <ellipse cx="100" cy="200" rx="190" ry="210" fill={col.mid} opacity={fl?undefined:0.55} style={{filter:'blur(55px)',transition:'opacity 0.7s',animation:fk(fl)}}/>}
+      <ellipse cx="100" cy="360" rx="100" ry="14" fill={lit?col.cone:'rgba(0,0,0,0)'} style={{filter:'blur(20px)',transition:'fill 0.7s'}}/>
+      <ellipse cx="100" cy="355" rx="68"  ry="7"  fill="rgba(0,0,0,0.68)" style={{filter:'blur(9px)'}}/>
+
       <g style={bodyStyle(phase)}>
-        {/* ceiling fixture — fixed, doesn't swing */}
-        <ellipse cx="100" cy="14" rx="32" ry="8"  fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
-        <rect    x="68"  y="6"   width="64" height="14" rx="5" fill={LC.body} stroke={LC.bodySt} strokeWidth="1"/>
-        <ellipse cx="100" cy="11" rx="26" ry="3"  fill="none"    stroke={LC.hi}      strokeWidth="1"/>
-        {/* swinging body — JS-controlled angle */}
+        {/* Ceiling plate */}
+        <ellipse cx="100" cy="14" rx="32" ry="8"  fill={`url(#${shade})`} stroke={M.rim} strokeWidth="1.2"/>
+        <rect    x="68"  y="6"  width="64" height="14" rx="5" fill={`url(#${shade})`} stroke={M.rim} strokeWidth="1"/>
+        <ellipse cx="100" cy="11" rx="26" ry="3" fill="none" stroke="rgba(200,200,255,0.12)" strokeWidth="1"/>
+
+        {/* Swinging body */}
         <g style={{ transformOrigin:'100px 14px', transform:`rotate(${swingDeg}deg)` }}>
-          <line x1="100" y1="14" x2="100" y2="120" stroke="#2a2a38" strokeWidth="5" strokeLinecap="round"/>
-          <line x1="100" y1="14" x2="100" y2="120" stroke="#484858" strokeWidth="2.5" strokeLinecap="round"/>
-          <rect x="88" y="116" width="24" height="18" rx="4" fill={LC.body} stroke={LC.bodySt} strokeWidth="1.5"/>
-          <rect x="91" y="118" width="4"  height="14" rx="2" fill={LC.pole}/>
-          <rect x="105" y="118" width="4" height="14" rx="2" fill={LC.pole}/>
+          {/* Cord (metallic) */}
+          <rect x="98" y="14" width="4" height="108" rx="2" fill={`url(#${cord})`}/>
+
+          {/* Junction box */}
+          <rect x="88" y="116" width="24" height="18" rx="4" fill={`url(#${shade})`} stroke={M.rim} strokeWidth="1.2"/>
+          <rect x="98.5" y="118" width="3" height="14" rx="1.5" fill={`url(#${cord})`}/>
+          <rect x="104.5" y="118" width="3" height="14" rx="1.5" fill={`url(#${cord})`}/>
+
+          {/* Light cone */}
+          <polygon points="76,134 124,134 440,700 -240,700" fill={`url(#${cone})`}
+            {...fadeProp(fl,lit,1)} style={{transition:'opacity 0.6s',animation:fk(fl)}}/>
           <ellipse cx="100" cy="163" rx="90" ry="78" fill={col.spot}
-            opacity={fl?undefined:(lit?0.9:0)}
-            style={{filter:'blur(22px)',transition:'opacity 0.5s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-          <polygon points="76,134 124,134 440,700 -240,700" fill={col.cone}
-            opacity={fl?undefined:(lit?1:0)}
-            style={{transition:'opacity 0.6s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
+            {...fadeProp(fl,lit,0.9)} style={{filter:'blur(22px)',transition:'opacity 0.5s',animation:fk(fl)}}/>
+
+          {/* Shade dome */}
           <path d="M76 134 Q76 185 100 196 Q124 185 124 134 Z"
-            fill={lit?col.beam:LC.body} opacity={lit?(fl?undefined:0.5):0.9}
-            style={{transition:'fill 0.6s,opacity 0.6s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-          <path d="M76 134 Q76 185 100 196 Q124 185 124 134 Z" fill="none" stroke={LC.bodySt} strokeWidth="1.5"/>
+            fill={lit?col.beam:M.shLo} opacity={lit?(fl?undefined:0.22):0.9}
+            style={{transition:'fill 0.6s,opacity 0.6s',animation:fk(fl)}}/>
+          <path d="M76 134 Q76 185 100 196 Q124 185 124 134 Z" fill={`url(#${shade})`} opacity="0.85"/>
+          <path d="M76 134 Q76 185 100 196 Q124 185 124 134 Z" fill="none" stroke={M.rim} strokeWidth="1.5"/>
+          {/* Dome inner glow */}
+          <path d="M80 136 Q80 183 100 194 Q120 183 120 136 Z" fill={col.beam}
+            {...fadeProp(fl,lit,0.28)} style={{transition:'opacity 0.6s',animation:fk(fl)}}/>
+          {/* Dome highlight */}
           <path d="M82 138 Q80 165 84 185" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="2" strokeLinecap="round"/>
-          <g opacity={lit?0.95:0.2} style={{transition:'opacity 0.5s'}}>
+
+          {/* Filament */}
+          <g opacity={lit?0.95:0.18} style={{transition:'opacity 0.5s'}}>
             <path d="M93 152 Q100 146 107 152 Q112 158 107 164 Q100 168 93 164 Q88 158 93 152"
               fill="none" stroke={col.beam} strokeWidth="1.8" strokeLinecap="round"/>
             <line x1="100" y1="152" x2="100" y2="138" stroke={col.beam} strokeWidth="1.8" strokeLinecap="round"/>
             <line x1="100" y1="164" x2="100" y2="176" stroke={col.beam} strokeWidth="1.8" strokeLinecap="round"/>
+            {lit && <ellipse cx="100" cy="158" rx="10" ry="14" fill={col.beam} opacity="0.5" style={{filter:'blur(4px)'}}/>}
           </g>
-          <ellipse cx="100" cy="196" rx="24" ry="7" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
-          <rect x="88" y="196" width="24" height="10" rx="3" fill={LC.body}/>
-          <line x1="88" y1="199" x2="112" y2="199" stroke={LC.shadeSt} strokeWidth="1"/>
-          <line x1="88" y1="203" x2="112" y2="203" stroke={LC.shadeSt} strokeWidth="1"/>
-          <ellipse cx="100" cy="206" rx="18" ry="5" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
+
+          {/* Bottom cap */}
+          <ellipse cx="100" cy="196" rx="24" ry="7" fill={`url(#${shade})`} stroke={M.rim} strokeWidth="1.2"/>
+          <rect x="88" y="196" width="24" height="10" rx="3" fill={M.baMid}/>
+          <line x1="88" y1="199" x2="112" y2="199" stroke={M.rim} strokeWidth="1"/>
+          <line x1="88" y1="203" x2="112" y2="203" stroke={M.rim} strokeWidth="1"/>
+          <ellipse cx="100" cy="206" rx="18" ry="5" fill={M.baLo} stroke={M.rim} strokeWidth="1"/>
         </g>
       </g>
-      {/* Bead drawn LAST — on top of lamp body so pointer events reach it */}
+
       <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 // ── Lantern lamp ──────────────────────────────────────────────────────────────
-function LanternLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, hintId, svgRef, onBeadPointerDown }: SVGProps) {
+// ─────────────────────────────────────────────────────────────────────────────
+function LanternLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, hintId, uid, svgRef, onBeadPointerDown }: SVGProps) {
   const lit = phase !== 'off', fl = phase === 'flicker'
   const rd = ropePath(attachPos, beadPos.x, beadPos.y)
-  const swingDeg = swingAngle * (180 / Math.PI)
+  const swingDeg = swingAngle * (180/Math.PI)
+  const chainG = `lch${uid}`, frameG = `lfr${uid}`, glassG = `lgl${uid}`, coneG = `lco${uid}`
   const links = [0,14,28,42,56]
 
   return (
     <svg ref={svgRef} viewBox="0 0 200 400" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
+      {SHARED_DEFS}
+      <defs>
+        <linearGradient id={chainG} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor="#0c0c1a"/>
+          <stop offset="35%"  stopColor="#4a4a62"/>
+          <stop offset="52%"  stopColor="#606078"/>
+          <stop offset="65%"  stopColor="#4a4a62"/>
+          <stop offset="100%" stopColor="#0c0c1a"/>
+        </linearGradient>
+        <linearGradient id={frameG} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor="#0a0a16"/>
+          <stop offset="30%"  stopColor={M.poMid}/>
+          <stop offset="52%"  stopColor={M.poHi}/>
+          <stop offset="68%"  stopColor={M.poMid}/>
+          <stop offset="100%" stopColor="#0a0a16"/>
+        </linearGradient>
+        <linearGradient id={glassG} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stopColor={lit?col.beam:'#10101e'} stopOpacity={lit?0.18:0.85}/>
+          <stop offset="35%"  stopColor={lit?col.beam:'#1e1e30'} stopOpacity={lit?0.32:0.92}/>
+          <stop offset="100%" stopColor={lit?col.beam:'#10101e'} stopOpacity={lit?0.15:0.80}/>
+        </linearGradient>
+        <linearGradient id={coneG} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%"   stopColor={col.beam} stopOpacity="0.55"/>
+          <stop offset="100%" stopColor={col.beam} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+
       <Rope d={rd} lit={lit} col={col}/>
+
+      {lit && <ellipse cx="100" cy="200" rx="190" ry="215" fill={col.mid} opacity={fl?undefined:0.55} style={{filter:'blur(55px)',transition:'opacity 0.7s',animation:fk(fl)}}/>}
+      <ellipse cx="100" cy="380" rx="100" ry="14" fill={lit?col.cone:'rgba(0,0,0,0)'} style={{filter:'blur(22px)',transition:'fill 0.7s'}}/>
+      <ellipse cx="100" cy="374" rx="68"  ry="7"  fill="rgba(0,0,0,0.70)" style={{filter:'blur(9px)'}}/>
+
       <g style={bodyStyle(phase)}>
-        {/* ceiling bracket — fixed */}
-        <rect x="84" y="4" width="32" height="12" rx="5" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
-        {/* swinging chain + body */}
+        {/* Ceiling bracket */}
+        <rect x="84" y="4" width="32" height="12" rx="5" fill={`url(#${frameG})`} stroke={M.rim} strokeWidth="1.2"/>
+        <line x1="86" y1="10" x2="114" y2="10" stroke="rgba(200,200,255,0.12)" strokeWidth="1"/>
+
+        {/* Swinging chain + body */}
         <g style={{ transformOrigin:'100px 10px', transform:`rotate(${swingDeg}deg)` }}>
-          {links.map(y=>(
-            <ellipse key={y} cx="100" cy={16+y} rx="5" ry="8" fill="none" stroke={LC.shadeSt} strokeWidth="2"/>
+          {/* Chain links */}
+          {links.map(y => (
+            <g key={y}>
+              <ellipse cx="100" cy={16+y} rx="5" ry="8" fill="none" stroke={`url(#${chainG})`} strokeWidth="2.5"/>
+              <ellipse cx="100" cy={16+y} rx="5" ry="8" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8"/>
+            </g>
           ))}
-          <path d="M70 86 L130 86 L122 100 L78 100 Z" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
-          <ellipse cx="100" cy="86" rx="30" ry="7" fill={LC.body}  stroke={LC.bodySt} strokeWidth="1.5"/>
-          <line x1="72"  y1="100" x2="68"  y2="218" stroke={LC.shade} strokeWidth="3.5" strokeLinecap="round"/>
-          <line x1="128" y1="100" x2="132" y2="218" stroke={LC.shade} strokeWidth="3.5" strokeLinecap="round"/>
-          <rect x="68" y="100" width="64" height="118" rx="2"
-            fill={lit?col.beam:'#0d0d18'} opacity={lit?(fl?undefined:0.22):0.7}
-            style={{transition:'fill .6s,opacity .6s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-          <line x1="68" y1="139" x2="132" y2="139" stroke={LC.bodySt} strokeWidth="2"/>
-          <line x1="68" y1="179" x2="132" y2="179" stroke={LC.bodySt} strokeWidth="2"/>
-          <rect x="67"  y="100" width="5" height="118" rx="2" fill={LC.body}/>
-          <rect x="128" y="100" width="5" height="118" rx="2" fill={LC.body}/>
-          <ellipse cx="100" cy="159" rx="90" ry="82" fill={col.spot}
-            opacity={fl?undefined:(lit?0.9:0)}
-            style={{filter:'blur(22px)',transition:'opacity 0.5s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-          <polygon points="68,218 132,218 520,800 -320,800" fill={col.cone}
-            opacity={fl?undefined:(lit?1:0)}
-            style={{transition:'opacity 0.6s',animation:fl?'ll-flicker 0.65s ease-out forwards':'none'}}/>
-          {lit&&<ellipse cx="100" cy="160" rx="18" ry="28" fill={col.beam} opacity="0.4"
-            style={{filter:'blur(5px)'}}/>}
-          <path d="M68 218 L132 218 L122 234 L78 234 Z" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
-          <ellipse cx="100" cy="218" rx="32" ry="7" fill={LC.body} stroke={LC.bodySt} strokeWidth="1.5"/>
-          <path d="M94 234 L100 258 L106 234 Z" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
+
+          {/* Top collar */}
+          <path d="M70 86 L130 86 L122 100 L78 100 Z" fill={`url(#${frameG})`} stroke={M.rim} strokeWidth="1.2"/>
+          <ellipse cx="100" cy="86" rx="30" ry="7" fill={`url(#${frameG})`} stroke={M.rim} strokeWidth="1.2"/>
+          <line x1="74" y1="89" x2="126" y2="89" stroke="rgba(200,200,255,0.10)" strokeWidth="1"/>
+
+          {/* Corner posts */}
+          <line x1="72"  y1="100" x2="68"  y2="218" stroke={`url(#${frameG})`} strokeWidth="4.5" strokeLinecap="round"/>
+          <line x1="128" y1="100" x2="132" y2="218" stroke={`url(#${frameG})`} strokeWidth="4.5" strokeLinecap="round"/>
+          {/* Post highlight */}
+          <line x1="72.5"  y1="102" x2="68.5"  y2="216" stroke="rgba(180,180,220,0.12)" strokeWidth="1.2" strokeLinecap="round"/>
+          <line x1="128.5" y1="102" x2="132.5" y2="216" stroke="rgba(180,180,220,0.12)" strokeWidth="1.2" strokeLinecap="round"/>
+
+          {/* Glass panels — left/right sides */}
+          <rect x="68" y="100" width="64" height="118" rx="1" fill={`url(#${glassG})`} style={{transition:'fill 0.6s',animation:fk(fl)}}/>
+          {/* Glass panel divisions */}
+          <line x1="68" y1="139" x2="132" y2="139" stroke={M.rim} strokeWidth="1.8"/>
+          <line x1="68" y1="179" x2="132" y2="179" stroke={M.rim} strokeWidth="1.8"/>
+          {/* Glass edge frames */}
+          <rect x="66"  y="99"  width="5" height="120" rx="2" fill={`url(#${frameG})`}/>
+          <rect x="129" y="99"  width="5" height="120" rx="2" fill={`url(#${frameG})`}/>
+
+          {/* Inner light / flame */}
+          {lit && <ellipse cx="100" cy="160" rx="20" ry="30" fill={col.beam} opacity="0.45" style={{filter:'blur(6px)',animation:fk(fl)}}/>}
+          {lit && <ellipse cx="100" cy="148" rx="8"  ry="14" fill={col.beam} opacity={fl?undefined:0.75} style={{filter:'blur(3px)',animation:fk(fl)}}/>}
+
+          {/* Light cone out of bottom */}
+          <polygon points="68,218 132,218 560,900 -360,900" fill={`url(#${coneG})`}
+            {...fadeProp(fl,lit,1)} style={{transition:'opacity 0.6s',animation:fk(fl)}}/>
+          <ellipse cx="100" cy="160" rx="90" ry="82" fill={col.spot}
+            {...fadeProp(fl,lit,0.9)} style={{filter:'blur(22px)',transition:'opacity 0.5s',animation:fk(fl)}}/>
+
+          {/* Bottom collar */}
+          <path d="M68 218 L132 218 L122 234 L78 234 Z" fill={`url(#${frameG})`} stroke={M.rim} strokeWidth="1.2"/>
+          <ellipse cx="100" cy="218" rx="32" ry="7" fill={`url(#${frameG})`} stroke={M.rim} strokeWidth="1.2"/>
+          <line x1="74" y1="221" x2="126" y2="221" stroke="rgba(200,200,255,0.10)" strokeWidth="1"/>
+
+          {/* Bottom spike */}
+          <path d="M94 234 L100 258 L106 234 Z" fill={`url(#${frameG})`} stroke={M.rim} strokeWidth="1.2"/>
+          {/* Spike shine */}
+          <line x1="100" y1="236" x2="100" y2="254" stroke="rgba(180,180,220,0.15)" strokeWidth="0.8" strokeLinecap="round"/>
         </g>
       </g>
-      {/* Bead drawn LAST — on top of lamp body so pointer events reach it */}
+
       <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
 
-// ── Light source % positions ──────────────────────────────────────────────────
+// ── Light source positions ────────────────────────────────────────────────────
 const LIGHT_PCT: Record<LampType, { x: string; y: string }> = {
   modern:  { x:'27%', y:'22%' },
   floor:   { x:'27%', y:'31%' },
@@ -408,6 +568,7 @@ const LIGHT_SRC: Record<LampType, Vec2> = {
 export type LampLoginProps = {
   lampType?:    LampType
   lampColor?:   LampColor
+  lightColor?:  string      // hex override from dev panel
   title?:       string
   buttonLabel?: string
   showGoogle?:  boolean
@@ -418,6 +579,7 @@ export type LampLoginProps = {
 export default function LampLogin({
   lampType    = 'modern',
   lampColor   = 'amber',
+  lightColor,
   title       = 'Welcome Back',
   buttonLabel = 'Sign In',
   showGoogle  = true,
@@ -429,7 +591,6 @@ export default function LampLogin({
   const [showPass,   setShowPass]   = useState(false)
   const [beadPos,    setBeadPos]    = useState<Vec2>(() => REST[lampType])
   const [isDragging, setIsDragging] = useState(false)
-  const [hue,        setHue]        = useState(() => PRESET_HUES[lampColor])
 
   const beadRef      = useRef<Vec2>(REST[lampType])
   const velRef       = useRef<Vec2>({ x:0, y:0 })
@@ -444,12 +605,14 @@ export default function LampLogin({
   const uid    = rawUid.replace(/:/g,'')
   const hintId = `ll-hint-${uid}`
 
+  // Derive hue: lightColor hex prop → hue, else lampColor preset, else internal
+  const hue = lightColor ? hexToHue(lightColor) : PRESET_HUES[lampColor]
   const col  = makeCol(hue)
+
   const isOn = phase === 'on'
   const isFl = phase === 'flicker'
   const lit  = phase !== 'off'
 
-  // Keep attachRef in sync each render so drag closures see the latest attach
   const attachPos = computeAttach(lampType, swingAngle)
   attachRef.current = attachPos
 
@@ -460,9 +623,6 @@ export default function LampLogin({
     beadRef.current = r; setBeadPos(r)
   }, [lampType])
 
-  // Sync preset hue when lampColor prop changes from outside
-  useEffect(() => { setHue(PRESET_HUES[lampColor]) }, [lampColor])
-
   useEffect(() => () => { cancelRaf(); cancelSwingRaf() }, [])
 
   function cancelRaf() {
@@ -471,12 +631,10 @@ export default function LampLogin({
   function cancelSwingRaf() {
     if (swingRafRef.current !== null) { cancelAnimationFrame(swingRafRef.current); swingRafRef.current = null }
   }
-
   function moveBead(v: Vec2) { beadRef.current = v; setBeadPos(v) }
 
   function toSVG(cx: number, cy: number): Vec2 | null {
-    const svg = svgRef.current
-    if (!svg) return null
+    const svg = svgRef.current; if (!svg) return null
     const pt = svg.createSVGPoint(), ctm = svg.getScreenCTM()
     if (!ctm) return null
     pt.x = cx; pt.y = cy
@@ -484,19 +642,14 @@ export default function LampLogin({
     return { x: r.x, y: r.y }
   }
 
-  // JS spring animation for pendant/lantern swing
   function startSwingAnimation() {
     cancelSwingRaf()
-    swingAngleRef.current = 0.19   // ~11° initial displacement
-    swingVelRef.current   = 0
+    swingAngleRef.current = 0.19; swingVelRef.current = 0
     let last = performance.now()
     function tick(now: number) {
-      const dt = Math.min((now - last) / 1000, 0.033)
-      last = now
+      const dt = Math.min((now-last)/1000, 0.033); last = now
       const a = swingAngleRef.current, v = swingVelRef.current
-      // pendulum spring: k=12 (period ≈ 1.8s), damping=4
-      const nv = v + (-12 * a - 4 * v) * dt
-      const na = a + nv * dt
+      const nv = v + (-12*a - 4*v)*dt, na = a + nv*dt
       swingAngleRef.current = na; swingVelRef.current = nv
       setSwingAngle(na)
       if (Math.abs(na) > 0.001 || Math.abs(nv) > 0.005)
@@ -522,18 +675,15 @@ export default function LampLogin({
     cancelRaf()
     const rest = REST[lampType]
     const pos  = { ...beadRef.current }
-    const vel  = velRef.current
-    vel.x = 0; vel.y = 0
+    const vel  = velRef.current; vel.x = 0; vel.y = 0
     let last = performance.now()
     function tick(now: number) {
-      const dt = Math.min((now - last) / 1000, 0.033)
-      last = now
+      const dt = Math.min((now-last)/1000, 0.033); last = now
       const dx = pos.x - rest.x, dy = pos.y - rest.y
-      vel.x += (-320 * dx - 24 * vel.x) * dt
-      vel.y += (-320 * dy - 24 * vel.y) * dt
-      pos.x += vel.x * dt; pos.y += vel.y * dt
-      moveBead({ x: pos.x, y: pos.y })
-      if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3 || Math.abs(vel.x) > 0.3 || Math.abs(vel.y) > 0.3)
+      vel.x += (-320*dx - 24*vel.x)*dt; vel.y += (-320*dy - 24*vel.y)*dt
+      pos.x += vel.x*dt; pos.y += vel.y*dt
+      moveBead({ x:pos.x, y:pos.y })
+      if (Math.abs(dx)>0.3||Math.abs(dy)>0.3||Math.abs(vel.x)>0.3||Math.abs(vel.y)>0.3)
         rafRef.current = requestAnimationFrame(tick)
       else moveBead(rest)
     }
@@ -544,29 +694,25 @@ export default function LampLogin({
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
     cancelRaf()
-    const startSvg = toSVG(e.clientX, e.clientY)
-    if (!startSvg) return
+    const startSvg = toSVG(e.clientX, e.clientY); if (!startSvg) return
     const startBead   = { ...beadRef.current }
-    const startAttach = { ...attachRef.current }  // capture rotated attach at drag start
-    const MAX_DIST = 155
+    const startAttach = { ...attachRef.current }
     setIsDragging(true)
 
     const onMove = (me: PointerEvent) => {
-      const cur = toSVG(me.clientX, me.clientY)
-      if (!cur) return
+      const cur = toSVG(me.clientX, me.clientY); if (!cur) return
       let nx = startBead.x + (cur.x - startSvg.x)
       let ny = startBead.y + (cur.y - startSvg.y)
       const dx = nx - startAttach.x, dy = ny - startAttach.y
       const dist = Math.hypot(dx, dy)
-      if (dist > MAX_DIST) { nx = startAttach.x + dx/dist*MAX_DIST; ny = startAttach.y + dy/dist*MAX_DIST }
-      moveBead({ x: nx, y: ny })
+      if (dist > 155) { nx = startAttach.x + dx/dist*155; ny = startAttach.y + dy/dist*155 }
+      moveBead({ x:nx, y:ny })
     }
     const onUp = () => {
       setIsDragging(false)
-      const rest = REST[lampType]
-      const cur  = beadRef.current
-      springBack(Math.hypot(cur.x - rest.x, cur.y - rest.y) > 22 ||
-                 Math.hypot(cur.x - rest.x, cur.y - rest.y) < 4)
+      const rest = REST[lampType], cur = beadRef.current
+      const d = Math.hypot(cur.x-rest.x, cur.y-rest.y)
+      springBack(d > 22 || d < 4)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup',   onUp)
     }
@@ -581,7 +727,7 @@ export default function LampLogin({
 
   const svgProps: SVGProps = {
     phase, col, beadPos, attachPos, swingAngle, isDragging,
-    hintId, svgRef, onBeadPointerDown: handleBeadPointerDown,
+    hintId, uid, svgRef, onBeadPointerDown: handleBeadPointerDown,
   }
 
   // ── Compact ───────────────────────────────────────────────────────────────
@@ -591,7 +737,7 @@ export default function LampLogin({
       <>
         <style>{KF}{`@keyframes ${hintId}{0%,100%{opacity:.10}50%{opacity:.32}}`}</style>
         <div style={{
-          position:'relative', background:'#08080b', borderRadius:12,
+          position:'relative', background:'#04040a', borderRadius:12,
           overflow:'hidden', width:'100%', minHeight:155,
           display:'flex', alignItems:'center', padding:'8px',
           boxSizing:'border-box', fontFamily:'system-ui,-apple-system,sans-serif', gap:8,
@@ -624,27 +770,37 @@ export default function LampLogin({
 
   // ── Full mode ─────────────────────────────────────────────────────────────
   const lsrc = LIGHT_PCT[lampType]
-  const fmShadow = isOn ? `-12px 0 50px ${col.glow}40, 0 8px 32px rgba(0,0,0,0.65)` : '0 4px 30px rgba(0,0,0,0.6)'
-  const fmBg     = isOn ? `linear-gradient(115deg, ${col.mid} 0%, rgba(12,10,16,0.96) 50%)` : 'rgba(12,10,16,0.94)'
-  const fmBorL   = isOn ? `1px solid ${col.beam}45` : '1px solid rgba(255,255,255,0.07)'
-  const fmBorD   = isOn ? `1px solid ${col.beam}18` : '1px solid rgba(255,255,255,0.04)'
+  const fmShadow = isOn ? `-12px 0 55px ${col.glow}40, 0 8px 36px rgba(0,0,0,0.7)` : '0 4px 32px rgba(0,0,0,0.7)'
+  const fmBg     = isOn ? `linear-gradient(115deg, ${col.mid} 0%, rgba(8,6,12,0.97) 55%)` : 'rgba(8,6,12,0.96)'
+  const fmBorL   = isOn ? `1px solid ${col.beam}45` : '1px solid rgba(255,255,255,0.06)'
+  const fmBorD   = isOn ? `1px solid ${col.beam}18` : '1px solid rgba(255,255,255,0.03)'
 
   return (
     <>
       <style>{KF}{`@keyframes ${hintId}{0%,100%{opacity:.10}50%{opacity:.32}}`}</style>
       <div style={{
         position:'relative', width:'100%', minHeight:520,
-        background:'linear-gradient(155deg, #1c1208 0%, #100d08 40%, #080808 100%)',
+        /* deep dark room — very subtle warm ground at bottom */
+        background:'radial-gradient(ellipse 90% 40% at 27% 102%, #110e06 0%, #06060c 55%, #020208 100%)',
         borderRadius:16, overflow:'hidden',
         display:'flex', boxSizing:'border-box',
         fontFamily:'system-ui,-apple-system,sans-serif',
       }}>
+        {/* Subtle floor line when lit */}
+        <div style={{
+          position:'absolute', bottom:0, left:0, right:0, height:'1px',
+          background:`linear-gradient(90deg,transparent,${col.mid},transparent)`,
+          opacity:lit?0.5:0.05, transition:'opacity 0.7s',
+          pointerEvents:'none', zIndex:2,
+        }}/>
+
         <p style={{
           position:'absolute', top:22, left:30, margin:0,
-          fontSize:8.5, color:'#3a2e1a', letterSpacing:'0.22em',
+          fontSize:8.5, color:'#2e2518', letterSpacing:'0.22em',
           textTransform:'uppercase', userSelect:'none', zIndex:3,
         }}>Pull the string to toggle login</p>
 
+        {/* Scene light cone overlay */}
         <div style={{
           position:'absolute', inset:0,
           background:[
@@ -658,17 +814,18 @@ export default function LampLogin({
           pointerEvents:'none', zIndex:0,
         }}/>
 
+        {/* Left: lamp */}
         <div style={{
           flex:'0 0 55%', position:'relative', zIndex:1,
-          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-          padding:'20px 0 16px 20px', gap:14,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          padding:'20px 0 20px 20px',
         }}>
           <div style={{width:'100%', maxWidth:340, aspectRatio:'340 / 480'}}>
             <LampSVG {...svgProps}/>
           </div>
-          <ColorWheel hue={hue} onChange={setHue}/>
         </div>
 
+        {/* Right: form */}
         <div style={{
           flex:'1 1 auto', display:'flex', alignItems:'center', justifyContent:'center',
           padding:'24px 32px 24px 12px', zIndex:1,
@@ -685,9 +842,9 @@ export default function LampLogin({
               background:fmBg,
               borderTop:fmBorL, borderLeft:fmBorL, borderRight:fmBorD, borderBottom:fmBorD,
               borderRadius:16, padding:'26px 24px',
-              backdropFilter:'blur(20px)',
+              backdropFilter:'blur(22px)',
               boxShadow:fmShadow,
-              transition:'box-shadow 0.7s ease,background 0.7s ease,border-color 0.7s ease',
+              transition:'box-shadow 0.7s,background 0.7s,border-color 0.7s',
             }}>
               <div style={{
                 position:'absolute', top:0, left:0, bottom:0, width:'50%',
@@ -725,14 +882,14 @@ export default function LampLogin({
                 {showGoogle&&(
                   <>
                     <div style={{display:'flex', alignItems:'center', gap:7}}>
-                      <div style={{flex:1, height:1, background:'#181826'}}/>
-                      <span style={{fontSize:10, color:'#2c2c3e'}}>or</span>
-                      <div style={{flex:1, height:1, background:'#181826'}}/>
+                      <div style={{flex:1, height:1, background:'#141420'}}/>
+                      <span style={{fontSize:10, color:'#2a2a3a'}}>or</span>
+                      <div style={{flex:1, height:1, background:'#141420'}}/>
                     </div>
                     <button style={{
                       width:'100%', padding:'10px', borderRadius:9,
-                      border:isOn?`1px solid ${col.beam}22`:'1px solid #181826',
-                      background:isOn?'rgba(8,6,14,0.96)':'#080610',
+                      border:isOn?`1px solid ${col.beam}22`:'1px solid #14141e',
+                      background:isOn?'rgba(6,4,12,0.97)':'#06040c',
                       color:isOn?'#b0b0c8':'#484858',
                       fontSize:12, cursor:isOn?'pointer':'default',
                       display:'flex', alignItems:'center', justifyContent:'center', gap:7,
@@ -752,11 +909,11 @@ export default function LampLogin({
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function fld(col: (typeof LAMP_COLORS)[LampColor], isOn: boolean): React.CSSProperties {
+function fld(col: ReturnType<typeof makeCol>, isOn: boolean): React.CSSProperties {
   return {
     width:'100%', padding:'11px 13px', borderRadius:8,
-    border: isOn?`1px solid ${col.beam}30`:'1px solid #1c1c2e',
-    background: isOn?'rgba(5,4,10,0.98)':'#05040a',
+    border: isOn?`1px solid ${col.beam}30`:'1px solid #181824',
+    background: isOn?'rgba(4,3,8,0.98)':'#04030a',
     color:'#c8c8d8', fontSize:13, outline:'none',
     boxSizing:'border-box', transition:'border-color 0.6s',
   }
