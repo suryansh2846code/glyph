@@ -44,12 +44,14 @@ export default function OtpVerify({
 
   useEffect(() => {
     if (verifyMode !== 'auto' || !allFilled || phase !== 'input') return
-    const t = setTimeout(triggerVerify, 280)
+    const t = setTimeout(triggerVerify, 240)
     return () => clearTimeout(t)
   }, [allFilled, phase, verifyMode])
 
   function triggerVerify() {
     setPhase('verifying')
+    // Wait for all cards to finish piling (stagger + transition + settle buffer)
+    const pileDuration = (length - 1) * 70 + 460
     setTimeout(() => {
       const entered = digits.join('')
       if (correctOtp && entered !== correctOtp) {
@@ -62,7 +64,7 @@ export default function OtpVerify({
       } else {
         setPhase('success')
       }
-    }, 480)
+    }, pileDuration)
   }
 
   function handleChange(i: number, raw: string) {
@@ -106,8 +108,10 @@ export default function OtpVerify({
   }
 
   const boxSize = compact ? 44 : 64
+  const br = compact ? 13 : 20
   const gap = compact ? 8 : 14
   const totalWidth = length * boxSize + (length - 1) * gap
+  const centerX = totalWidth / 2
 
   return (
     <div
@@ -131,66 +135,86 @@ export default function OtpVerify({
       {/* Box row */}
       <div style={{ position: 'relative', width: totalWidth, height: boxSize }}>
         {phase === 'success' ? (
-          /* Single collapsed success box */
+          /* Single collapsed success box — solid accent fill */
           <div
             style={{
               position: 'absolute',
               left: '50%',
               width: boxSize,
               height: boxSize,
-              borderRadius: compact ? 14 : 20,
-              border: `2.5px solid ${accentColor}`,
-              boxShadow: `0 0 0 1px ${hexToRgba(accentColor, 0.2)}, 0 0 24px ${hexToRgba(accentColor, 0.55)}, 0 0 60px ${hexToRgba(accentColor, 0.2)}`,
-              backgroundColor: hexToRgba(accentColor, 0.09),
+              borderRadius: br,
+              border: `2px solid ${accentColor}`,
+              backgroundColor: hexToRgba(accentColor, 0.9),
+              boxShadow: `0 0 0 1px ${hexToRgba(accentColor, 0.3)}, 0 0 28px ${hexToRgba(accentColor, 0.65)}, 0 0 60px ${hexToRgba(accentColor, 0.25)}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              animation: 'otpPop 0.44s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+              animation: 'otpPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both',
             }}
           >
             <svg
-              width={boxSize * 0.4}
-              height={boxSize * 0.4}
+              width={boxSize * 0.42}
+              height={boxSize * 0.42}
               viewBox="0 0 24 24"
               fill="none"
               overflow="visible"
             >
               <path
                 d="M5 13l4 4L19 7"
-                stroke={accentColor}
-                strokeWidth="2.5"
+                stroke="#fff"
+                strokeWidth="2.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 style={{
                   strokeDasharray: 30,
                   strokeDashoffset: 30,
-                  animation: 'otpCheck 0.36s ease-out 0.3s forwards',
+                  animation: 'otpCheck 0.38s ease-out 0.32s forwards',
                 }}
               />
             </svg>
           </div>
         ) : (
-          /* Input digit boxes */
           digits.map((digit, i) => {
             const boxLeft = i * (boxSize + gap)
             const boxCenterX = boxLeft + boxSize / 2
-            const centerX = totalWidth / 2
             const dx = centerX - boxCenterX
 
-            const isNextEmpty = !digit && digits.slice(0, i).every(d => d !== '')
+            const isFilled = !!digit
+            const isNext = !digit && digits.slice(0, i).every(d => d !== '')
             const isErr = phase === 'error'
             const isVerifying = phase === 'verifying'
 
-            const borderColor = isErr
+            // --- Background: accent-colored throughout, opacity varies by state ---
+            const bgAlpha = isVerifying
+              ? 0.88
+              : isFilled
+              ? 0.82
+              : isNext
+              ? 0.14
+              : 0.07
+
+            const borderCol = isErr
               ? '#ef4444'
-              : digit || isNextEmpty
-              ? accentColor
-              : '#3f3f46'
-            const bgColor = digit ? hexToRgba(accentColor, 0.07) : 'transparent'
-            const glow =
-              digit || isNextEmpty
-                ? `0 0 0 1px ${hexToRgba(isErr ? '#ef4444' : accentColor, 0.18)}, 0 0 16px ${hexToRgba(isErr ? '#ef4444' : accentColor, 0.24)}`
-                : 'none'
+              : accentColor
+
+            // Each card during pile: stacked slightly upward
+            const yPile = -(i * 2.5)
+            const transform = isVerifying
+              ? `translateX(${dx}px) translateY(${yPile}px)`
+              : 'translateX(0) translateY(0)'
+
+            // Cards land one by one — stagger delay per index
+            const transDelay = isVerifying ? `${i * 70}ms` : '0ms'
+
+            // Higher index = on top of the pile
+            const zIdx = isVerifying ? i + 1 : 1
+
+            // Shadow: during pile, simulate card depth
+            const shadow = isVerifying
+              ? `0 ${(i + 1) * 3}px 12px rgba(0,0,0,0.45), 0 0 0 1px ${hexToRgba(accentColor, 0.4)}`
+              : isFilled || isNext
+              ? `0 0 0 1px ${hexToRgba(isErr ? '#ef4444' : accentColor, 0.25)}, 0 0 18px ${hexToRgba(isErr ? '#ef4444' : accentColor, 0.28)}`
+              : 'none'
 
             return (
               <div
@@ -200,26 +224,22 @@ export default function OtpVerify({
                   left: boxLeft,
                   width: boxSize,
                   height: boxSize,
-                  borderRadius: compact ? 14 : 20,
-                  border: `2px solid ${borderColor}`,
-                  backgroundColor: bgColor,
-                  boxShadow: glow,
+                  borderRadius: br,
+                  border: `2px solid ${borderCol}`,
+                  backgroundColor: hexToRgba(isErr ? '#ef4444' : accentColor, bgAlpha),
+                  boxShadow: shadow,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transform: isVerifying
-                    ? `translateX(${dx}px) scale(0.72)`
-                    : 'translateX(0) scale(1)',
-                  opacity: isVerifying ? 0 : 1,
-                  transition:
-                    'transform 420ms cubic-bezier(0.4,0,0.2,1), opacity 400ms ease, border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease',
-                  zIndex: isVerifying ? length - i : 1,
+                  transform,
+                  zIndex: zIdx,
+                  transition: isVerifying
+                    ? `transform 380ms cubic-bezier(0.4,0,0.2,1) ${transDelay}, background-color 200ms ease, border-color 150ms ease, box-shadow 200ms ease`
+                    : 'transform 380ms cubic-bezier(0.34,1.56,0.64,1), background-color 200ms ease, border-color 150ms ease, box-shadow 200ms ease',
                 }}
               >
                 <input
-                  ref={el => {
-                    inputRefs.current[i] = el
-                  }}
+                  ref={el => { inputRefs.current[i] = el }}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}
@@ -238,11 +258,11 @@ export default function OtpVerify({
                     textAlign: 'center',
                     fontSize: compact ? 18 : 26,
                     fontWeight: 700,
-                    color: '#f4f4f5',
+                    color: isFilled ? '#fff' : hexToRgba('#ffffff', 0.55),
                     caretColor: 'transparent',
                     cursor: 'text',
                     userSelect: 'none',
-                    borderRadius: compact ? 14 : 20,
+                    borderRadius: br,
                     fontFamily: 'system-ui, -apple-system, sans-serif',
                   }}
                 />
@@ -265,8 +285,8 @@ export default function OtpVerify({
             fontWeight: 700,
             cursor: allFilled ? 'pointer' : 'not-allowed',
             backgroundColor: allFilled ? accentColor : '#27272a',
-            color: allFilled ? '#000' : '#52525b',
-            boxShadow: allFilled ? `0 0 22px ${hexToRgba(accentColor, 0.42)}` : 'none',
+            color: '#fff',
+            boxShadow: allFilled ? `0 0 22px ${hexToRgba(accentColor, 0.45)}` : 'none',
             transition: 'all 200ms ease',
             fontFamily: 'inherit',
           }}
@@ -275,7 +295,7 @@ export default function OtpVerify({
         </button>
       )}
 
-      {/* Status / resend row */}
+      {/* Status row */}
       {!compact && (
         <div style={{ textAlign: 'center', minHeight: 18 }}>
           {phase === 'success' ? (
@@ -311,8 +331,8 @@ export default function OtpVerify({
 
       <style>{`
         @keyframes otpPop {
-          from { transform: translateX(-50%) scale(0.5); opacity: 0; }
-          to   { transform: translateX(-50%) scale(1);   opacity: 1; }
+          from { transform: translateX(-50%) scale(0.6) translateY(6px); opacity: 0; }
+          to   { transform: translateX(-50%) scale(1)   translateY(0px); opacity: 1; }
         }
         @keyframes otpCheck {
           to { stroke-dashoffset: 0; }
