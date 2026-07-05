@@ -226,9 +226,8 @@ function PendantLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, h
 
   return (
     <svg ref={svgRef} viewBox="0 0 200 380" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
-      {/* Rope + bead drawn FIRST (behind lamp) so lamp body overlaps it at top */}
+      {/* Rope behind lamp body so ceiling fixture overlaps the top */}
       <Rope d={rd} lit={lit} col={col}/>
-      <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
       <g style={bodyStyle(phase)}>
         {/* ceiling fixture — fixed, doesn't swing */}
         <ellipse cx="100" cy="14" rx="32" ry="8"  fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
@@ -265,6 +264,8 @@ function PendantLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, h
           <ellipse cx="100" cy="206" rx="18" ry="5" fill={LC.pole} stroke={LC.poleSt} strokeWidth="1"/>
         </g>
       </g>
+      {/* Bead drawn LAST — on top of lamp body so pointer events reach it */}
+      <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
@@ -279,7 +280,6 @@ function LanternLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, h
   return (
     <svg ref={svgRef} viewBox="0 0 200 400" width="100%" height="100%" style={{overflow:'visible',display:'block'}}>
       <Rope d={rd} lit={lit} col={col}/>
-      <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
       <g style={bodyStyle(phase)}>
         {/* ceiling bracket — fixed */}
         <rect x="84" y="4" width="32" height="12" rx="5" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
@@ -312,6 +312,8 @@ function LanternLamp({ phase, col, beadPos, attachPos, swingAngle, isDragging, h
           <path d="M94 234 L100 258 L106 234 Z" fill={LC.shade} stroke={LC.shadeSt} strokeWidth="1.5"/>
         </g>
       </g>
+      {/* Bead drawn LAST — on top of lamp body so pointer events reach it */}
+      <Bead cx={beadPos.x} cy={beadPos.y} lit={lit} isDragging={isDragging} hintId={hintId} onPointerDown={onBeadPointerDown}/>
     </svg>
   )
 }
