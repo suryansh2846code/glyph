@@ -5,35 +5,42 @@ type LampColor  = 'amber' | 'cool' | 'rose'
 type Phase      = 'off'   | 'flicker' | 'on'
 type Vec2       = { x: number; y: number }
 
-// ── Color presets + dynamic palette from hue ──────────────────────────────────
+// ── Color presets + dynamic palette from hex ──────────────────────────────────
 const PRESET_HUES: Record<LampColor, number> = { amber:38, cool:210, rose:330 }
 
-function hexToHue(hex: string): number {
-  if (!hex.startsWith('#') || hex.length < 7) return 38
+// Extract hue + saturation from hex; clamp S to lamp-usable range
+function hexToLampHS(hex: string): { h: number; s: number } {
+  if (!hex.startsWith('#') || hex.length < 7) return { h:38, s:90 }
   const r = parseInt(hex.slice(1,3),16)/255
   const g = parseInt(hex.slice(3,5),16)/255
   const b = parseInt(hex.slice(5,7),16)/255
   const max = Math.max(r,g,b), min = Math.min(r,g,b)
-  if (max === min) return 0
-  const d = max - min
-  let h: number
-  if      (max === r) h = ((g-b)/d + (g<b?6:0)) / 6
-  else if (max === g) h = ((b-r)/d + 2) / 6
-  else                h = ((r-g)/d + 4) / 6
-  return Math.round(h * 360)
+  if (max === min) return { h:38, s:22 }   // achromatic → warm-white
+  const d = max - min, l = (max+min)/2
+  const sRaw = l > 0.5 ? d/(2-max-min) : d/(max+min)
+  let hFrac = 0
+  if      (max === r) hFrac = ((g-b)/d + (g<b?6:0)) / 6
+  else if (max === g) hFrac = ((b-r)/d + 2) / 6
+  else                hFrac = ((r-g)/d + 4) / 6
+  const h = Math.round(hFrac * 360)
+  // Boost low-saturation picks so lamp light is always visible (min 65%),
+  // cap at 92% to avoid garish neon. This keeps the hue faithful.
+  const s = Math.min(Math.max(Math.round(sRaw*100), 65), 92)
+  return { h, s }
 }
 
-function makeCol(h: number) {
+function makeCol(h: number, s = 90) {
+  const l = 63
   return {
-    beam:    `hsl(${h},90%,64%)`,
-    cone:    `hsla(${h},90%,64%,0.22)`,
-    mid:     `hsla(${h},90%,64%,0.08)`,
-    glow:    `hsla(${h},95%,60%,0.75)`,
-    spot:    `hsla(${h},90%,64%,0.55)`,
+    beam:    `hsl(${h},${s}%,${l}%)`,
+    cone:    `hsla(${h},${s}%,${l}%,0.22)`,
+    mid:     `hsla(${h},${s}%,${l}%,0.08)`,
+    glow:    `hsla(${h},${Math.min(s+5,95)}%,${l-3}%,0.75)`,
+    spot:    `hsla(${h},${s}%,${l}%,0.55)`,
     btnGrad: `linear-gradient(135deg,hsl(${(h+200)%360},55%,38%),hsl(${(h+230)%360},50%,32%))`,
-    beam0:   `hsla(${h},90%,64%,0)`,
-    beam55:  `hsla(${h},90%,64%,0.55)`,
-    mid10:   `hsla(${h},90%,64%,0.10)`,
+    beam0:   `hsla(${h},${s}%,${l}%,0)`,
+    beam55:  `hsla(${h},${s}%,${l}%,0.55)`,
+    mid10:   `hsla(${h},${s}%,${l}%,0.10)`,
   }
 }
 
@@ -605,9 +612,11 @@ export default function LampLogin({
   const uid    = rawUid.replace(/:/g,'')
   const hintId = `ll-hint-${uid}`
 
-  // Derive hue: lightColor hex prop → hue, else lampColor preset, else internal
-  const hue = lightColor ? hexToHue(lightColor) : PRESET_HUES[lampColor]
-  const col  = makeCol(hue)
+  // Derive h+s from hex pick; fallback to preset hue at full saturation
+  const { h, s } = lightColor
+    ? hexToLampHS(lightColor)
+    : { h: PRESET_HUES[lampColor], s: 90 }
+  const col = makeCol(h, s)
 
   const isOn = phase === 'on'
   const isFl = phase === 'flicker'
