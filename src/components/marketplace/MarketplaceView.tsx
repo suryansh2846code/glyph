@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { COMPONENT_REGISTRY } from './ComponentRegistry'
 import type { ComponentItem } from './ComponentRegistry'
 import GlobeView from '../GlobeView'
+import LampLogin from './LampLogin'
 import {
   Search,
   Check,
@@ -1207,6 +1208,18 @@ function LivePreviewRenderer({ item, props, selectedSubLoader, onSelectSubLoader
         onSubmit={(val) => alert(`Submitted: ${val.e164}`)}
       />
     );
+  }
+
+  if (item.id === 'lamp-login') {
+    return (
+      <LampLogin
+        lampColor={props.lampColor ?? 'amber'}
+        title={props.title ?? 'Welcome Back'}
+        buttonLabel={props.buttonLabel ?? 'Sign In'}
+        showGoogle={props.showGoogle !== false}
+        compact={!!props.isCompact}
+      />
+    )
   }
 
   return null
