@@ -3,6 +3,22 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "description": "Turn images, GIFs, and video into tunable halftone glyph art and export it in 2D or 3D.",
+  "homepage": "https://glyph.suryanshdev.xyz/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suryansh2846code/glyph.git"
+  },
+  "keywords": [
+    "halftone",
+    "generative-art",
+    "image-processing",
+    "threejs",
+    "react",
+    "vite",
+    "typescript"
+  ],
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
